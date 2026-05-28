@@ -7,6 +7,7 @@ import '../widgets/ancient_input.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/ancient_button.dart';
 import '../widgets/tianni_dialog.dart';
+import '../widgets/tianni_feedback.dart';
 
 /// 登录页面 (React LoginPage.tsx)
 class LoginPage extends StatefulWidget {
@@ -152,52 +153,21 @@ class _LoginPageState extends State<LoginPage> {
                               AncientButton(text: '踏入修仙路', onTap: () => Navigator.of(context).pushNamed('/characters')),
                               const SizedBox(height: 16),
 
-                              // 测试弹窗 — 单按钮样式
-                              AncientButton(text: '测试弹窗', onTap: () {
-                                TianniDialog.show(
-                                  context,
-                                  title: '天机提示',
-                                  subtitle: '道心唯坚',
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 4),
-                                    child: Text(
-                                      '修仙之路漫长且艰辛，\n你确定要继续前行吗？',
-                                      style: TextStyle(
-                                        color: TianniColors.parchment,
-                                        fontSize: 13,
-                                        letterSpacing: 2,
-                                        height: 1.8,
-                                      ),
-                                    ),
-                                  ),
-                                  actions: [
-                                    DialogAction(text: '确认前行', onTap: () => Navigator.of(context).pop()),
-                                  ],
-                                );
+                              // 测试按钮 — 三个反馈组件
+                              AncientButton(text: '传音 (Toast)', onTap: () {
+                                TianniToast.show(context, '存档已同步至太虚仙域');
                               }),
-                              const SizedBox(height: 16),
-
-                              // 测试弹窗 — 双按钮样式
-                              AncientButton(text: '测试弹窗2', onTap: () {
-                                TianniDialog.show(
-                                  context,
-                                  title: '出\u3000征',
-                                  subtitle: '天元城郊 · 1-20阶',
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      _DialogRowTest(label: '妖兽', value: '炼气妖兽'),
-                                      SizedBox(height: 8),
-                                      _DialogRowTest(label: '危险', value: '★☆☆'),
-                                      SizedBox(height: 8),
-                                      _DialogRowTest(label: '掉落', value: '修为 灵石'),
-                                    ],
-                                  ),
-                                  actions: [
-                                    DialogAction(text: '踏入战场', onTap: () => Navigator.of(context).pop()),
-                                    DialogAction(text: '暂不前往', isPrimary: false),
-                                  ],
+                              const SizedBox(height: 12),
+                              AncientButton(text: '神识 (Notify)', onTap: () {
+                                TianniNotify.show(context, '全服通告：青云门首席弟子突破至化神境！');
+                              }),
+                              const SizedBox(height: 12),
+                              AncientButton(text: '抉择 (MessageBox)', onTap: () {
+                                TianniMessageBox.show(
+                                  context: context,
+                                  title: '天道警告',
+                                  message: '此举将覆盖本地道韵存档，是否逆天而行？',
+                                  onConfirm: () {},
                                 );
                               }),
                               const SizedBox(height: 16),

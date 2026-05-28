@@ -427,89 +427,108 @@ class _CloudArchiveDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // ── 弹窗主体 ──
-        Container(
-          decoration: BoxDecoration(
-            color: TianniColors.bgCard,
-            border: Border.all(color: TianniColors.goldDark, width: 0.8),
-          ),
-          width: 260,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── 标题 ──
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 14, 20, 8),
-                child: Text('云存档',
-                  style: TextStyle(color: TianniColors.parchment, fontSize: 16, letterSpacing: 8),
-                ),
-              ),
-
-              // ── 存档列表 ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                child: Column(
-                  children: archives.asMap().entries.map((entry) {
-                    final i = entry.key;
-                    final isLast = i == archives.length - 1;
-                    return Column(
-                      children: [
-                        _ArchiveRow(archive: entry.value, index: i + 1),
-                        if (!isLast) const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 6),
-                          child: _DotLine(),
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 18),
-
-        // ── 关闭按钮 ──
-        GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
-          child: Transform.rotate(
-            angle: 0.785,
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── 弹窗主体 ──
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 350),
             child: Container(
-              width: 32, height: 32,
+              width: 280,
               decoration: BoxDecoration(
-                border: Border.all(color: TianniColors.goldDark2, width: 1),
+                color: TianniColors.bgCard,
+                border: Border.all(color: TianniColors.goldDark, width: 0.8),
               ),
-              child: Center(
-                child: Transform.rotate(
-                  angle: -0.785,
-                  child: const Text('✕',
-                    style: TextStyle(color: TianniColors.goldDim, fontSize: 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── 标题 ──
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 16, 20, 10),
+                    child: Text('云存档',
+                      style: TextStyle(
+                        fontFamily: 'MaShanZheng',
+                        color: TianniColors.parchment,
+                        fontSize: 20,
+                        letterSpacing: 8,
+                      ),
+                    ),
+                  ),
+
+                  // ── 分割线 ──
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Container(height: 1, color: TianniColors.goldDark.withValues(alpha: 0.3)),
+                  ),
+                  const SizedBox(height: 6),
+
+                  // ── 可滚动存档列表 ──
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                      itemCount: archives.length,
+                      itemBuilder: (context, i) {
+                        final isLast = i == archives.length - 1;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Column(
+                            children: [
+                              _ArchiveRow(archive: archives[i], index: i + 1),
+                              if (!isLast)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Container(
+                                    height: 1,
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.transparent,
+                                          TianniColors.goldDark,
+                                          Colors.transparent,
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          // ── 固定关闭按钮 ──
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Transform.rotate(
+              angle: 0.785,
+              child: Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  border: Border.all(color: TianniColors.goldDark2, width: 1),
+                ),
+                child: Center(
+                  child: Transform.rotate(
+                    angle: -0.785,
+                    child: const Text('✕',
+                      style: TextStyle(color: TianniColors.goldDim, fontSize: 14),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-/// 点线分隔
-class _DotLine extends StatelessWidget {
-  const _DotLine();
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(11, (_) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Container(width: 1.5, height: 0.5, color: TianniColors.goldDark2),
-      )),
+        ],
+      ),
     );
   }
 }
@@ -547,33 +566,84 @@ class _ArchiveRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 第一行：名字
-              Text(archive['name'] as String,
-                style: const TextStyle(color: TianniColors.parchment, fontSize: 14, letterSpacing: 3),
+              // 第一行：名字 — maShanZheng
+              Text(
+                archive['name'] as String,
+                style: const TextStyle(
+                  fontFamily: 'MaShanZheng',
+                  color: TianniColors.goldBright,
+                  fontSize: 18,
+                  letterSpacing: 3,
+                ),
               ),
               const SizedBox(height: 3),
-              // 第二行：境界
-              Text('${archive['realm']} · ${archive['layer']}',
-                style: TextStyle(color: realmColor, fontSize: 10, letterSpacing: 1),
+              // 第二行：境界 — 默认字体
+              Text(
+                '${archive['realm']} · ${archive['layer']}',
+                style: TextStyle(
+                  color: realmColor,
+                  fontSize: 13,
+                  letterSpacing: 1,
+                ),
               ),
               const SizedBox(height: 2),
-              // 第三行：服务器 & 日期
-              Text('${archive['srv']}  |  ${archive['date']}',
-                style: const TextStyle(color: TianniColors.goldDark2, fontSize: 9, letterSpacing: 1),
+              // 第三行：服务器 & 日期 — 默认字体，弱化
+              Text(
+                '${archive['srv']}  |  ${archive['date']}',
+                style: const TextStyle(
+                  color: TianniColors.goldDim,
+                  fontSize: 11,
+                  letterSpacing: 1,
+                ),
               ),
             ],
           ),
         ),
 
-        // 下载
-        GestureDetector(
-          onTap: () => debugPrint('下载：${archive['name']}'),
-          child: const Padding(
-            padding: EdgeInsets.only(top: 4),
-            child: Text('下载',
-              style: TextStyle(color: TianniColors.goldDark, fontSize: 11, letterSpacing: 4),
+        const SizedBox(width: 4),
+
+        // ── 操作区：上传 / 下载 ──
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () => debugPrint('上传：${archive['name']}'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: TianniColors.gold.withValues(alpha: 0.05),
+                  border: Border.all(color: TianniColors.goldDark, width: 0.5),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('◇', style: TextStyle(color: TianniColors.gold, fontSize: 12)),
+                    SizedBox(width: 4),
+                    Text('上传', style: TextStyle(color: TianniColors.gold, fontSize: 12, letterSpacing: 2)),
+                  ],
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: () => debugPrint('下载：${archive['name']}'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: TianniColors.gold.withValues(alpha: 0.05),
+                  border: Border.all(color: TianniColors.goldDark, width: 0.5),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('◇', style: TextStyle(color: TianniColors.gold, fontSize: 12)),
+                    SizedBox(width: 4),
+                    Text('下载', style: TextStyle(color: TianniColors.gold, fontSize: 12, letterSpacing: 2)),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
