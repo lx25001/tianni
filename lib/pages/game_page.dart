@@ -28,7 +28,7 @@ class _GamePageState extends State<GamePage> {
   static const List<String> _realms = ['炼气期', '筑基期', '金丹期', '元婴期', '化神期', '渡劫期', '大乘期', '飞升期'];
 
   static const List<Map<String, String>> _menuItems = [
-    {'id': 'cultivate', 'label': '修炼', 'icon': '☯'},
+    {'id': 'cultivate', 'label': '修炼', 'icon': '修'},
     {'id': 'battle', 'label': '征战', 'icon': '剑'},
     {'id': 'home', 'label': '主界', 'icon': '◈'},
     {'id': 'sect', 'label': '宗门', 'icon': '門'},
@@ -612,7 +612,6 @@ class _BottomMenu extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // 激活指示线
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       width: isActive ? 30 : 0,
@@ -620,7 +619,6 @@ class _BottomMenu extends StatelessWidget {
                       color: TianniColors.gold,
                     ),
                     const Spacer(),
-                    // 图标
                     Container(
                       width: 26, height: 26,
                       decoration: BoxDecoration(
@@ -637,7 +635,6 @@ class _BottomMenu extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    // 文字
                     Text(item['label']!,
                       style: TextStyle(
                         color: isActive ? TianniColors.gold : TianniColors.goldDark,
