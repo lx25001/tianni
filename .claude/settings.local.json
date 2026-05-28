@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter pub *)",
+      "Bash(flutter analyze *)",
+      "Bash(flutter devices *)",
+      "Bash(flutter run *)",
+      "Bash(python3 *)",
+      "Bash(/usr/bin/env python *)",
+      "Bash(xxd layer.png)",
+      "Bash(sed -i 's/Tianni/天逆/g' Info.plist)",
+      "Read(//d/d/code/code/tianni/ios/Runner/**)"
+    ]
+  }
+}
