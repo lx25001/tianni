@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/colors.dart';
 import 'pages/login_page.dart';
-import 'pages/register_page.dart';
 import 'pages/character_select_page.dart';
 import 'pages/create_character_page.dart';
 import 'pages/game_page.dart';
@@ -27,9 +26,6 @@ class TianniApp extends StatelessWidget {
         switch (settings.name) {
           case '/':
             page = const LoginPage();
-            break;
-          case '/register':
-            page = const RegisterPage();
             break;
           case '/characters':
             page = const CharacterSelectPage();

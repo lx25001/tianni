@@ -6,10 +6,8 @@ import '../widgets/ink_divider.dart';
 import '../widgets/ancient_input.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/ancient_button.dart';
-import '../widgets/tianni_dialog.dart';
-import '../widgets/tianni_feedback.dart';
 
-/// 登录页面 (React LoginPage.tsx)
+/// 登录 / 注册 合并页面
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -17,11 +15,13 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
+  bool _isRegisterMode = false;
+
   final TextEditingController _accountController = TextEditingController(text: '');
   final TextEditingController _passwordController = TextEditingController(text: '');
+  final TextEditingController _confirmController = TextEditingController(text: '');
 
-  // 假数据
   final List<List<double>> _starPositions = const [
     [40, 80], [320, 120], [80, 200], [300, 280], [60, 380], [350, 450],
     [120, 500], [280, 560], [180, 650], [340, 700], [50, 730], [310, 750],
@@ -32,11 +32,149 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _accountController.dispose();
     _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
+  }
+
+  Widget _buildForm() {
+    if (_isRegisterMode) {
+      return _buildRegisterForm();
+    }
+    return _buildLoginForm();
+  }
+
+  // ── 登录表单 ──
+  Widget _buildLoginForm() {
+    return Column(
+      key: const ValueKey('login'),
+      children: [
+        const Text('踏入仙途',
+          style: TextStyle(color: TianniColors.gold, fontSize: 14, letterSpacing: 4),
+        ),
+        const SizedBox(height: 8),
+        const InkDivider(thin: true),
+        const SizedBox(height: 20),
+
+        // 道号
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text('道\u3000号',
+            style: TextStyle(color: TianniColors.goldDim, fontSize: 11, letterSpacing: 3),
+          ),
+        ),
+        const SizedBox(height: 6),
+        AncientInput(
+          hintText: '请输入您的道号',
+          controller: _accountController,
+        ),
+        const SizedBox(height: 22),
+
+        // 道诀
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text('道\u3000诀',
+            style: TextStyle(color: TianniColors.goldDim, fontSize: 11, letterSpacing: 3),
+          ),
+        ),
+        const SizedBox(height: 6),
+        AncientInput(
+          hintText: '请输入您的道诀',
+          obscureText: true,
+          controller: _passwordController,
+        ),
+        const SizedBox(height: 28),
+
+        // 登录按钮
+        AncientButton(
+          text: '踏入修仙路',
+          onTap: () => Navigator.of(context).pushNamed('/characters'),
+        ),
+        const SizedBox(height: 16),
+
+        // 切换到注册
+        GestureDetector(
+          onTap: () => setState(() => _isRegisterMode = true),
+          child: const Text('尚无道籍？前往立册',
+            style: TextStyle(color: TianniColors.goldDark, fontSize: 11, letterSpacing: 2),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── 注册表单 ──
+  Widget _buildRegisterForm() {
+    return Column(
+      key: const ValueKey('register'),
+      children: [
+        // 顶部标注
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('◈ 天机密录 ◈',
+              style: TextStyle(color: TianniColors.goldDark2, fontSize: 10, letterSpacing: 1),
+            ),
+            Text('◈ 不可外传 ◈',
+              style: TextStyle(color: TianniColors.goldDark2, fontSize: 10, letterSpacing: 1),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // 道号
+        const _FieldLabel(label: '道\u3000号', sub: '（修仙名讳）'),
+        const SizedBox(height: 6),
+        AncientInput(
+          hintText: '赐予道号，方可立册',
+          controller: _accountController,
+        ),
+        const SizedBox(height: 24),
+
+        // 道诀
+        const _FieldLabel(label: '道\u3000诀', sub: '（不可外泄）'),
+        const SizedBox(height: 6),
+        AncientInput(
+          hintText: '设定护身道诀，六字以上',
+          obscureText: true,
+          controller: _passwordController,
+        ),
+        const SizedBox(height: 24),
+
+        // 确认道诀
+        const _FieldLabel(label: '确认道诀', sub: '（再输一遍）'),
+        const SizedBox(height: 6),
+        AncientInput(
+          hintText: '再次输入道诀以确认',
+          obscureText: true,
+          controller: _confirmController,
+        ),
+        const SizedBox(height: 28),
+
+        const InkDivider(thin: true),
+        const SizedBox(height: 16),
+
+        // 立册按钮
+        AncientButton(
+          text: '立册入道',
+          onTap: () => Navigator.of(context).pushNamed('/characters'),
+        ),
+        const SizedBox(height: 14),
+
+        // 切换回登录
+        GestureDetector(
+          onTap: () => setState(() => _isRegisterMode = false),
+          child: const Text('已有道籍？返回登入',
+            style: TextStyle(color: TianniColors.goldDark, fontSize: 11, letterSpacing: 2),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
     return Scaffold(
       backgroundColor: TianniColors.bg,
       resizeToAvoidBottomInset: false,
@@ -55,138 +193,83 @@ class _LoginPageState extends State<LoginPage> {
               // ── 顶部云纹 ──
               const Positioned(top: 0, left: 0, child: _CloudPattern()),
 
-              // ── 中心内容 ──
-              Positioned.fill(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 60),
-
-                      // ── 顶部竖排游戏名 ──
-                      const _TaijiOrnament(),
-                      const SizedBox(height: 12),
-                      // 副标题
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(width: 30, height: 1,
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(colors: [Colors.transparent, TianniColors.goldDark]),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Text('修仙问道',
-                            style: TextStyle(color: TianniColors.goldDim, fontSize: 11, letterSpacing: 3),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(width: 30, height: 1,
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(colors: [TianniColors.goldDark, Colors.transparent]),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      // 主标题
-                      Text('天逆',
-                        style: GoogleFonts.maShanZheng(
-                          color: TianniColors.gold,
-                          fontSize: 52,
-                          letterSpacing: 16,
-                          fontWeight: FontWeight.normal,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text('TIAN NI · IMMORTAL WORLD',
-                        style: TextStyle(color: TianniColors.goldDark, fontSize: 10, letterSpacing: 5),
-                      ),
-
-                      const SizedBox(height: 40),
-
-                      // ── 登录表单 ──
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 42),
-                        child: AncientBorder(
-                          gold: true,
-                          padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
-                          child: Column(
-                            children: [
-                              const Text('踏入仙途',
-                                style: TextStyle(color: TianniColors.gold, fontSize: 14, letterSpacing: 4),
-                              ),
-                              const SizedBox(height: 8),
-                              const InkDivider(thin: true),
-                              const SizedBox(height: 20),
-
-                              // 道号
-                              const Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text('道\u3000号',
-                                  style: TextStyle(color: TianniColors.goldDim, fontSize: 11, letterSpacing: 3),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              AncientInput(
-                                hintText: '请输入您的道号',
-                                controller: _accountController,
-                              ),
-                              const SizedBox(height: 22),
-
-                              // 道诀
-                              const Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text('道\u3000诀',
-                                  style: TextStyle(color: TianniColors.goldDim, fontSize: 11, letterSpacing: 3),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              AncientInput(
-                                hintText: '请输入您的道诀',
-                                obscureText: true,
-                                controller: _passwordController,
-                              ),
-                              const SizedBox(height: 28),
-
-                              // 登录按钮
-                              AncientButton(text: '踏入修仙路', onTap: () => Navigator.of(context).pushNamed('/characters')),
-                              const SizedBox(height: 16),
-
-                              // 测试按钮 — 三个反馈组件
-                              AncientButton(text: '传音 (Toast)', onTap: () {
-                                TianniToast.show(context, '存档已同步至太虚仙域');
-                              }),
-                              const SizedBox(height: 12),
-                              AncientButton(text: '神识 (Notify)', onTap: () {
-                                TianniNotify.show(context, '全服通告：青云门首席弟子突破至化神境！');
-                              }),
-                              const SizedBox(height: 12),
-                              AncientButton(text: '抉择 (MessageBox)', onTap: () {
-                                TianniMessageBox.show(
-                                  context: context,
-                                  title: '天道警告',
-                                  message: '此举将覆盖本地道韵存档，是否逆天而行？',
-                                  onConfirm: () {},
-                                );
-                              }),
-                              const SizedBox(height: 16),
-
-                              // 注册入口
-                              GestureDetector(
-                                onTap: () => Navigator.of(context).pushNamed('/register'),
-                                child: const Text('尚无道籍？前往立册',
-                                  style: TextStyle(color: TianniColors.goldDark, fontSize: 11, letterSpacing: 2),
-                                ),
-                              ),
-                            ],
+              // ── 顶部标题（固定） ──
+              Positioned(
+                top: 60,
+                left: 0,
+                right: 0,
+                child: Column(
+                  children: [
+                    const _TaijiOrnament(),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(width: 30, height: 1,
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(colors: [Colors.transparent, TianniColors.goldDark]),
                           ),
                         ),
+                        const SizedBox(width: 6),
+                        const Text('修仙问道',
+                          style: TextStyle(color: TianniColors.goldDim, fontSize: 11, letterSpacing: 3),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(width: 30, height: 1,
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(colors: [TianniColors.goldDark, Colors.transparent]),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text('天逆',
+                      style: GoogleFonts.maShanZheng(
+                        color: TianniColors.gold,
+                        fontSize: 52,
+                        letterSpacing: 16,
+                        fontWeight: FontWeight.normal,
+                        height: 1,
                       ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('TIAN NI · IMMORTAL WORLD',
+                      style: TextStyle(color: TianniColors.goldDark, fontSize: 10, letterSpacing: 5),
+                    ),
+                  ],
+                ),
+              ),
 
-                      // 底部版权
-                      const SizedBox(height: 60),
-                    ],
+              // ── 表单区（键盘弹起时整体上移） ──
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOut,
+                transform: Matrix4.translationValues(0, bottomInset > 0 ? -bottomInset * 0.45 : 0, 0),
+                alignment: Alignment.center,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 42),
+                    child: AncientBorder(
+                      gold: true,
+                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 420),
+                        switchInCurve: Curves.easeOutBack,
+                        switchOutCurve: Curves.easeIn,
+                        transitionBuilder: (child, animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: ScaleTransition(
+                              scale: Tween(begin: 0.94, end: 1.0).animate(
+                                CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+                              ),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _buildForm(),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -226,7 +309,27 @@ class _StarDot extends StatelessWidget {
   }
 }
 
-// ──────────── 顶部云纹 SVG → CustomPaint ────────────
+// ──────────── 字段标签（注册表单） ────────────
+class _FieldLabel extends StatelessWidget {
+  final String label;
+  final String sub;
+  const _FieldLabel({required this.label, required this.sub});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Text('◆', style: TextStyle(color: TianniColors.gold, fontSize: 10)),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(color: TianniColors.goldDim, fontSize: 11, letterSpacing: 3)),
+        const SizedBox(width: 8),
+        Text(sub, style: const TextStyle(color: TianniColors.goldDark2, fontSize: 10)),
+      ],
+    );
+  }
+}
+
+// ──────────── 顶部云纹 ────────────
 class _CloudPattern extends StatelessWidget {
   const _CloudPattern();
 
@@ -277,7 +380,6 @@ class _CloudPatternPainter extends CustomPainter {
       ..quadraticBezierTo(350, 25, 375, 35);
     canvas.drawPath(path2, paint2);
 
-    // 小云朵
     for (final x in [30.0, 90.0, 150.0, 220.0, 290.0, 350.0]) {
       canvas.drawCircle(Offset(x, 20), 3, paintDot);
       canvas.drawCircle(Offset(x + 5, 18), 4, paintDot);
@@ -289,7 +391,7 @@ class _CloudPatternPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// ──────────── 中心八卦纹 SVG → CustomPaint ────────────
+// ──────────── 中心八卦纹 ────────────
 class _TaijiOrnament extends StatelessWidget {
   const _TaijiOrnament();
 
@@ -332,7 +434,6 @@ class _TaijiPainter extends CustomPainter {
     canvas.drawCircle(const Offset(cx, cy), 24, paintInner);
     canvas.drawCircle(const Offset(cx, cy), 1.5, paintCenter);
 
-    // 八卦线
     for (final angle in [0, 45, 90, 135]) {
       final rad = angle * pi / 180;
       final x1 = cx + 24 * cos(rad);
@@ -342,7 +443,6 @@ class _TaijiPainter extends CustomPainter {
       canvas.drawLine(Offset(x1, y1), Offset(x2, y2), paintLine);
     }
 
-    // 外圈点
     for (final angle in [0, 45, 90, 135, 180, 225, 270, 315]) {
       final rad = angle * pi / 180;
       canvas.drawCircle(
@@ -354,21 +454,4 @@ class _TaijiPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ── 弹窗辅助行 ──
-class _DialogRowTest extends StatelessWidget {
-  final String label, value;
-  const _DialogRowTest({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(color: TianniColors.goldDim, fontSize: 12, letterSpacing: 2)),
-        Text(value, style: const TextStyle(color: TianniColors.goldBright, fontSize: 12, letterSpacing: 1)),
-      ],
-    );
-  }
 }

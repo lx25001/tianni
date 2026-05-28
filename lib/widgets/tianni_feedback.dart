@@ -35,20 +35,22 @@ class TianniToast {
             opacity: fadeAnim,
             child: SlideTransition(
               position: slideAnim,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: TianniColors.gold.withValues(alpha: 0.05),
-                    border: const Border(
-                      top: BorderSide(color: TianniColors.goldDark, width: 0.5),
-                      bottom: BorderSide(color: TianniColors.goldDark, width: 0.5),
+              child: Material(
+                type: MaterialType.transparency,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
                     ),
-                  ),
-                  child: Text(
+                    decoration: BoxDecoration(
+                      color: TianniColors.gold.withValues(alpha: 0.05),
+                      border: const Border(
+                        top: BorderSide(color: TianniColors.goldDark, width: 0.5),
+                        bottom: BorderSide(color: TianniColors.goldDark, width: 0.5),
+                      ),
+                    ),
+                    child: Text(
                     '\u25c7 $message \u25c7',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
@@ -59,6 +61,7 @@ class TianniToast {
                   ),
                 ),
               ),
+            ),
             ),
           ),
         ),
@@ -160,9 +163,11 @@ class TianniNotify {
         child: IgnorePointer(
           child: SlideTransition(
             position: slideAnim,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 44, 24, 20),
+            child: Material(
+              type: MaterialType.transparency,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 44, 24, 20),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -206,6 +211,7 @@ class TianniNotify {
               ),
             ),
           ),
+        ),
         ),
       ),
     );
