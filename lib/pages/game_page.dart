@@ -5,10 +5,14 @@ import '../widgets/ancient_border.dart';
 import '../widgets/ink_divider.dart';
 import '../widgets/ancient_button.dart';
 import '../widgets/tianni_dialog.dart';
+import '../models/character_data.dart';
+import '../services/character_storage.dart';
 
-/// 游戏主界面 (React GamePage.tsx)
+/// 游戏主界面
 class GamePage extends StatefulWidget {
-  const GamePage({super.key});
+  final int slotIndex;
+
+  const GamePage({super.key, required this.slotIndex});
 
   @override
   State<GamePage> createState() => _GamePageState();
@@ -16,16 +20,10 @@ class GamePage extends StatefulWidget {
 
 class _GamePageState extends State<GamePage> {
   String _activeMenu = 'home';
+  CharacterData? _char;
+  bool _loading = true;
 
-  // ── 静态假数据 ──
-  static const String _charName = '云清玄';
-  static const String _realmName = '元婴期';
   static const String _serverName = '太虚仙域';
-  static const int _expPercent = 65;
-  static const int _hpPercent = 82;
-  static const int _mpPercent = 58;
-
-  static const List<String> _realms = ['炼气期', '筑基期', '金丹期', '元婴期', '化神期', '渡劫期', '大乘期', '飞升期'];
 
   static const List<Map<String, String>> _menuItems = [
     {'id': 'cultivate', 'label': '修炼', 'icon': '修'},
@@ -35,17 +33,36 @@ class _GamePageState extends State<GamePage> {
     {'id': 'bag', 'label': '储物', 'icon': '囊'},
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadCharacter();
+  }
+
+  Future<void> _loadCharacter() async {
+    final char = await CharacterStorage.load(widget.slotIndex);
+    if (mounted) setState(() { _char = char; _loading = false; });
+  }
+
+  String get _charName => _char?.fullName ?? '修士';
+  String get _realmName => _char?.realmName ?? '炼气期';
+  int get _expPercent => _char?.xpPercent ?? 0;
+  int get _hpPercent => ((_char?.con ?? 10) * 10) ~/ 2; // rough
+  int get _mpPercent => ((_char?.qi ?? 10) * 8) ~/ 2;
+  int get realmIdx => _char?.realmIndex ?? 0;
+
   Color get realmColor {
     return TianniColors.realmColors[_realmName] ?? TianniColors.gold;
   }
 
-  int get realmIdx {
-    final idx = _realms.indexOf(_realmName);
-    return idx >= 0 ? idx : 3;
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: TianniColors.bg,
+        body: Center(child: CircularProgressIndicator(color: TianniColors.gold)),
+      );
+    }
     return Scaffold(
       backgroundColor: TianniColors.bg,
       body: Center(

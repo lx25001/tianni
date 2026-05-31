@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/colors.dart';
-import 'pages/login_page.dart';
+import 'pages/advisory_page.dart';
 import 'pages/character_select_page.dart';
 import 'pages/create_character_page.dart';
 import 'pages/game_page.dart';
@@ -25,7 +25,7 @@ class TianniApp extends StatelessWidget {
         Widget page;
         switch (settings.name) {
           case '/':
-            page = const LoginPage();
+            page = const AdvisoryPage();
             break;
           case '/characters':
             page = const CharacterSelectPage();
@@ -34,10 +34,11 @@ class TianniApp extends StatelessWidget {
             page = const CreateCharacterPage();
             break;
           case '/game':
-            page = const GamePage();
+            final slotIndex = settings.arguments as int? ?? 0;
+            page = GamePage(slotIndex: slotIndex);
             break;
           default:
-            page = const LoginPage();
+            page = const CharacterSelectPage();
         }
         return MaterialPageRoute(builder: (_) => page);
       },

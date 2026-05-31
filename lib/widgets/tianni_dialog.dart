@@ -53,10 +53,11 @@ class TianniDialog extends StatefulWidget {
       context: context,
       barrierDismissible: barrierDismissible,
       barrierColor: Colors.black87,
-      builder: (_) => PopScope(
-        canPop: barrierDismissible,
-        child: Center(
-          child: SizedBox(
+      builder: (_) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+          SizedBox(
             width: 291,
             child: TianniDialog(
               title: title,
@@ -67,6 +68,31 @@ class TianniDialog extends StatefulWidget {
               child: child,
             ),
           ),
+          const SizedBox(height: 14),
+          Material(
+            color: Colors.transparent,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Transform.rotate(
+                angle: 0.785,
+                child: Container(
+                  width: 28, height: 28,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: TianniColors.goldDark2, width: 0.8),
+                  ),
+                  child: Center(
+                    child: Transform.rotate(
+                      angle: -0.785,
+                      child: const Text('✕',
+                        style: TextStyle(color: TianniColors.goldDim, fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
         ),
       ),
     );
