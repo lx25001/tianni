@@ -1,5 +1,5 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/colors.dart';
 import '../widgets/ancient_border.dart';
 import '../widgets/ink_divider.dart';
@@ -7,6 +7,8 @@ import '../widgets/ancient_button.dart';
 import '../widgets/tianni_dialog.dart';
 import '../models/character_data.dart';
 import '../services/character_storage.dart';
+import '../widgets/game_map_widget.dart';
+import '../providers/game_clock_provider.dart';
 
 /// 游戏主界面
 class GamePage extends StatefulWidget {
@@ -23,14 +25,20 @@ class _GamePageState extends State<GamePage> {
   CharacterData? _char;
   bool _loading = true;
 
-  static const String _serverName = '太虚仙域';
-
   static const List<Map<String, String>> _menuItems = [
     {'id': 'cultivate', 'label': '修炼', 'icon': '修'},
-    {'id': 'battle', 'label': '征战', 'icon': '剑'},
+    {'id': 'battle', 'label': '洞府', 'icon': '府'},
     {'id': 'home', 'label': '主界', 'icon': '◈'},
-    {'id': 'sect', 'label': '宗门', 'icon': '門'},
+    {'id': 'sect', 'label': '游历', 'icon': '游'},
     {'id': 'bag', 'label': '储物', 'icon': '囊'},
+  ];
+
+  static const List<Map<String, String>> _menuRow2 = [
+    {'id': 'clan', 'label': '宗门', 'icon': '門'},
+    {'id': 'skill', 'label': '功法', 'icon': '诀'},
+    {'id': 'social', 'label': '社交', 'icon': '友'},
+    {'id': 'trade', 'label': '交易', 'icon': '市'},
+    {'id': 'setting', 'label': '设置', 'icon': '设'},
   ];
 
   @override
@@ -64,534 +72,210 @@ class _GamePageState extends State<GamePage> {
       );
     }
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: TianniColors.bg,
-      body: Center(
-        child: SizedBox(
-          width: 375,
-          height: 812,
-          child: Column(
-            children: [
-              // ── 顶部装饰线 ──
-              Container(
-                height: 2,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // ── 角色信息 ──
+            Container(
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
                 decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.transparent, TianniColors.goldDark, TianniColors.gold, TianniColors.goldDark, Colors.transparent],
-                    stops: [0.0, 0.2, 0.5, 0.8, 1.0],
-                  ),
+                  border: Border(bottom: BorderSide(color: TianniColors.inkLight, width: 0.5)),
                 ),
-              ),
-
-              // ── 顶部标题栏 ──
-              Container(
-                height: 32,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: TianniColors.inkLight, width: 1)),
-                  color: TianniColors.bg,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('天逆',
-                      style: TextStyle(color: TianniColors.gold, fontSize: 14, letterSpacing: 4),
-                    ),
                     Row(
                       children: [
-                        Container(width: 4, height: 4,
-                          decoration: const BoxDecoration(color: TianniColors.onlineGreen, shape: BoxShape.circle),
+                        Text(_charName,
+                          style: const TextStyle(color: TianniColors.goldBright, fontSize: 15, letterSpacing: 3, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(width: 4),
-                        const Text('在线', style: TextStyle(color: TianniColors.goldDark, fontSize: 9)),
-                        const SizedBox(width: 12),
-                        const Text('灵石 12,480', style: TextStyle(color: TianniColors.goldDark2, fontSize: 9)),
+                        const SizedBox(width: 10),
+                        Text('$_realmName · ${_char?.layer ?? 1}层',
+                          style: TextStyle(color: realmColor, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        Text('灵石 12,480',
+                          style: const TextStyle(color: TianniColors.gold, fontSize: 10),
+                        ),
                       ],
                     ),
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false),
-                      child: const Text('离开',
-                        style: TextStyle(color: TianniColors.goldDark2, fontSize: 9, letterSpacing: 1),
-                      ),
+                    const SizedBox(height: 3),
+                    // 境界进度条
+                    Row(
+                      children: [
+                        const Text('修为 ', style: TextStyle(color: TianniColors.goldDark, fontSize: 9)),
+                        Expanded(
+                          child: Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: TianniColors.inkLight,
+                              border: Border.all(color: TianniColors.inkMid, width: 0.3),
+                            ),
+                            child: FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: _expPercent / 100,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(colors: [TianniColors.goldDark, TianniColors.goldBright]),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text('$_expPercent%', style: const TextStyle(color: TianniColors.goldDim, fontSize: 9)),
+                      ],
                     ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Text('${_char?.rootElement ?? "金"}灵根 · ${_char?.rootPurity ?? "中品"}',
+                          style: const TextStyle(color: TianniColors.gold, fontSize: 11),
+                        ),
+                        const SizedBox(width: 12),
+                        Text('气血 ${(_char?.con ?? 10) * 10}',
+                          style: const TextStyle(color: Color(0xFFFF5555), fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 12),
+                        Text('灵气 ${(_char?.qi ?? 10) * 8}',
+                          style: const TextStyle(color: Color(0xFF66B3FF), fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        Text('寿元 360',
+                          style: const TextStyle(color: TianniColors.goldDim, fontSize: 10),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const _TimeDisplay(),
                   ],
                 ),
               ),
-
-              // ── 角色信息区 ──
-              _CharacterHeader(
-                charName: _charName, realmName: _realmName,
-                serverName: _serverName, realmColor: realmColor,
-                realmIdx: realmIdx, expPercent: _expPercent,
-                hpPercent: _hpPercent, mpPercent: _mpPercent,
-              ),
-
-              // ── 修炼状态条 ──
-              const _CultivateBar(),
-
               // ── 主内容区 ──
               Expanded(
                 child: IndexedStack(
-                  index: _menuItems.indexWhere((m) => m['id'] == _activeMenu),
-                  children: const [
-                    _MapArea(),           // home
-                    _CultivatePanel(),    // cultivate
-                    _BattlePanel(),       // battle
-                    _SectPanel(),         // sect
-                    _BagPanel(),          // bag
+                  index: [..._menuItems, ..._menuRow2].indexWhere((m) => m['id'] == _activeMenu),
+                  children: [
+                    _CultivatePanel(character: _char),
+                    const _BattlePanel(),
+                    const GameMapWidget(),
+                    const _SectPanel(),
+                    const _BagPanel(),
+                    const _PlaceholderPanel(label: '宗门', desc: '宗门系统开发中'),
+                    const _PlaceholderPanel(label: '功法', desc: '功法系统开发中'),
+                    const _PlaceholderPanel(label: '社交', desc: '社交系统开发中'),
+                    const _PlaceholderPanel(label: '交易', desc: '交易系统开发中'),
+                    const _PlaceholderPanel(label: '设置', desc: '设置项开发中'),
                   ],
                 ),
               ),
 
               // ── 底部菜单 ──
-              _BottomMenu(
-                active: _activeMenu,
-                items: _menuItems,
-                onSelect: (id) => setState(() => _activeMenu = id),
+              Container(
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: TianniColors.goldDark2, width: 1)),
+                  color: TianniColors.bg,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _BottomMenu(
+                      active: _activeMenu,
+                      items: _menuItems,
+                      onSelect: (id) => setState(() => _activeMenu = id),
+                    ),
+                    Container(height: 0.5, color: TianniColors.inkLight),
+                    _BottomMenu(
+                      active: _activeMenu,
+                      items: _menuRow2,
+                      onSelect: (id) => setState(() => _activeMenu = id),
+                      sub: true,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-      ),
     );
   }
 }
 
-// ============================================================
-// 角色信息头部
-// ============================================================
-class _CharacterHeader extends StatelessWidget {
-  final String charName, realmName, serverName;
-  final Color realmColor;
-  final int realmIdx, expPercent, hpPercent, mpPercent;
+// END
 
-  const _CharacterHeader({
-    required this.charName, required this.realmName, required this.serverName,
-    required this.realmColor, required this.realmIdx,
-    required this.expPercent, required this.hpPercent, required this.mpPercent,
-  });
+// ── 游戏时间显示（Riverpod）──
+class _TimeDisplay extends ConsumerWidget {
+  const _TimeDisplay();
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-      child: AncientBorder(
-        gold: true,
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── 头像框 ──
-            _AvatarFrame(realmColor: realmColor, realmName: realmName),
-            const SizedBox(width: 10),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gameTime = ref.watch(gameClockProvider);
+    final si = gameTime.shichen.index;
+    final brightness = 0.4 + (6 - (si - 6).abs()) / 6.0 * 0.6;
+    final color = Color.lerp(TianniColors.goldDim, TianniColors.goldBright, brightness)!;
+    final fest = gameTime.festival;
 
-            // ── 角色信息 ──
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 名字+大区
-                  Row(
-                    children: [
-                      Text(charName, style: const TextStyle(color: TianniColors.goldBright, fontSize: 16, letterSpacing: 3)),
-                      const SizedBox(width: 8),
-                      const Text('|', style: TextStyle(color: TianniColors.goldDark2, fontSize: 9)),
-                      const SizedBox(width: 8),
-                      Text(serverName, style: const TextStyle(color: TianniColors.goldDark, fontSize: 9, letterSpacing: 1)),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-
-                  // 修为进度
-                  _StatBar(label: '修为', percent: expPercent, color: TianniColors.gold, labelColor: TianniColors.goldDim, valueColor: TianniColors.goldDark),
-                  const SizedBox(height: 5),
-
-                  // 气血+灵力
-                  Row(
-                    children: [
-                      Expanded(child: _StatBar(label: '气血', percent: hpPercent, color: TianniColors.hpRed, labelColor: TianniColors.hpRed, valueColor: const Color(0xFF5A4020), height: 2, fontSize: 8)),
-                      const SizedBox(width: 8),
-                      Expanded(child: _StatBar(label: '灵力', percent: mpPercent, color: TianniColors.mpBlue, labelColor: const Color(0xFF2A4A8B), valueColor: const Color(0xFF3A4A60), height: 2, fontSize: 8)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // ── 右侧属性 ──
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _AttrItem(label: '境界', value: '第${realmIdx + 1}层', color: realmColor),
-                const SizedBox(height: 4),
-                const _AttrItem(label: '战力', value: '48,820', color: TianniColors.gold),
-                const SizedBox(height: 4),
-                const _AttrItem(label: '宗门', value: '天剑宗', color: TianniColors.goldDim),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AttrItem extends StatelessWidget {
-  final String label, value;
-  final Color color;
-  const _AttrItem({required this.label, required this.value, required this.color});
-  @override
-  Widget build(BuildContext context) {
-    return RichText(
-      text: TextSpan(
-        children: [
-          TextSpan(text: '$label ', style: const TextStyle(color: TianniColors.goldDark2, fontSize: 8)),
-          TextSpan(text: value, style: TextStyle(color: color, fontSize: 9, letterSpacing: 1)),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatBar extends StatelessWidget {
-  final String label;
-  final int percent;
-  final Color color;
-  final Color labelColor;
-  final Color valueColor;
-  final double height;
-  final double fontSize;
-
-  const _StatBar({
-    required this.label, required this.percent,
-    required this.color, required this.labelColor, required this.valueColor,
-    this.height = 3, this.fontSize = 9,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: TextStyle(color: labelColor, fontSize: fontSize, letterSpacing: 1)),
-            Text('$percent%', style: TextStyle(color: valueColor, fontSize: fontSize)),
-          ],
+        Text(gameTime.formatted,
+          style: TextStyle(color: color, fontSize: 10, letterSpacing: 1),
         ),
-        const SizedBox(height: 2),
-        Container(
-          height: height,
-          decoration: BoxDecoration(color: height > 2 ? TianniColors.inkLight : const Color(0xFF1A0808)),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FractionallySizedBox(
-              widthFactor: percent / 100,
-              child: Container(color: color),
-            ),
-          ),
-        ),
+        if (fest != null) ...[
+          const SizedBox(width: 8),
+          const _FestivalBadge(),
+        ],
       ],
     );
   }
 }
 
-// ── 头像框 ──
-class _AvatarFrame extends StatelessWidget {
-  final Color realmColor;
-  final String realmName;
-  const _AvatarFrame({required this.realmColor, required this.realmName});
+class _FestivalBadge extends ConsumerStatefulWidget {
+  const _FestivalBadge();
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 54 + 16,
-      child: Column(
-        children: [
-          Container(
-            width: 54, height: 54,
-            decoration: BoxDecoration(
-              border: Border.all(color: realmColor),
-              color: const Color.fromRGBO(10, 7, 2, 0.8),
-            ),
-            child: const CustomPaint(
-              painter: _AvatarSymbolPainter(),
-              child: Center(),
-            ),
-          ),
-          const SizedBox(height: 1),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-            decoration: BoxDecoration(
-              border: Border.all(color: realmColor),
-              color: TianniColors.bg,
-            ),
-            child: Text(realmName,
-              style: TextStyle(color: realmColor, fontSize: 8, letterSpacing: 1),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  ConsumerState<_FestivalBadge> createState() => _FestivalBadgeState();
 }
 
-class _AvatarSymbolPainter extends CustomPainter {
-  const _AvatarSymbolPainter();
+class _FestivalBadgeState extends ConsumerState<_FestivalBadge> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scaleAnim;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2, cy = size.height / 2;
-    final paint = Paint()
-      ..color = TianniColors.gold
-      ..strokeWidth = 0.8
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawCircle(Offset(cx, cy), 14, paint);
-    canvas.drawCircle(Offset(cx, cy), 8, paint..strokeWidth = 0.4);
-    canvas.drawCircle(Offset(cx, cy), 2, paint..style = PaintingStyle.fill);
-
-    for (int i = 0; i < 6; i++) {
-      final angle = i * 60 * pi / 180;
-      canvas.drawLine(
-        Offset(cx + 8 * cos(angle), cy + 8 * sin(angle)),
-        Offset(cx + 14 * cos(angle), cy + 14 * sin(angle)),
-        paint..style = PaintingStyle.stroke..strokeWidth = 0.6,
-      );
-    }
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
+      ..repeat(reverse: true);
+    _scaleAnim = Tween<double>(begin: 1.0, end: 1.08).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ============================================================
-// 修炼状态栏
-// ============================================================
-class _CultivateBar extends StatelessWidget {
-  const _CultivateBar();
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+    final fest = ref.watch(gameClockProvider).festival;
+    if (fest == null) return const SizedBox.shrink();
+
+    return ScaleTransition(
+      scale: _scaleAnim,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
         decoration: BoxDecoration(
-          border: Border.all(color: TianniColors.inkLight),
+          border: Border.all(color: TianniColors.crimson),
+          color: TianniColors.crimson.withValues(alpha: 0.2),
         ),
-        child: Row(
-          children: [
-            Container(width: 4, height: 4,
-              decoration: const BoxDecoration(color: TianniColors.gold, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 5),
-            const Text('正在修炼', style: TextStyle(color: TianniColors.goldDim, fontSize: 9, letterSpacing: 1)),
-            const SizedBox(width: 8),
-            Container(width: 1, height: 10, color: TianniColors.inkMid),
-            const SizedBox(width: 8),
-            const Text('功法：天逆剑诀', style: TextStyle(color: TianniColors.goldDark, fontSize: 9)),
-            const Spacer(),
-            const Text('剩余：02:34:18', style: TextStyle(color: TianniColors.goldDark2, fontSize: 9)),
-          ],
+        child: Text(fest.name,
+          style: const TextStyle(color: Color(0xFFFF6666), fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
-}
-
-// ============================================================
-// 地图区域
-// ============================================================
-class _MapArea extends StatelessWidget {
-  const _MapArea();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-      child: Column(
-        children: [
-          // 地图标题
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Transform.rotate(
-                    angle: 0.785,
-                    child: Container(
-                      width: 6, height: 6,
-                      decoration: BoxDecoration(border: Border.all(color: TianniColors.gold)),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text('天元仙域',
-                    style: TextStyle(color: TianniColors.gold, fontSize: 11, letterSpacing: 2),
-                  ),
-                ],
-              ),
-              const Text('◈ 坐标 天元城 ◈',
-                style: TextStyle(color: TianniColors.goldDark2, fontSize: 9),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          const InkDivider(thin: true),
-          const SizedBox(height: 4),
-
-          // 地图容器
-          Expanded(
-            child: Stack(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: TianniColors.inkLight),
-                    color: const Color.fromRGBO(5, 3, 1, 0.95),
-                  ),
-                  child: const CustomPaint(
-                    painter: _InkWorldMapPainter(),
-                    child: Center(),
-                  ),
-                ),
-                // 地图操作提示
-                const Positioned(
-                  top: 8, right: 8,
-                  child: Column(
-                    children: [
-                      _MapChip('妖兽区'),
-                      SizedBox(height: 4),
-                      _MapChip('采集区'),
-                      SizedBox(height: 4),
-                      _MapChip('秘境'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MapChip extends StatelessWidget {
-  final String label;
-  const _MapChip(this.label);
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        border: Border.all(color: TianniColors.goldDark2),
-        color: const Color.fromRGBO(0, 0, 0, 0.8),
-      ),
-      child: Text(label, style: const TextStyle(color: TianniColors.goldDark, fontSize: 8, letterSpacing: 1)),
-    );
-  }
-}
-
-// ── 水墨世界地图 Painter ──
-class _InkWorldMapPainter extends CustomPainter {
-  const _InkWorldMapPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width, h = size.height;
-
-    // 底部水墨背景
-    final bgPaint = Paint()..color = const Color.fromRGBO(200, 169, 110, 0.02);
-    canvas.drawOval(Rect.fromLTWH(w * 0.05, h * 0.55, w * 0.9, h * 0.45), bgPaint);
-
-    // 主大陆轮廓
-    final continentPaint = Paint()
-      ..color = const Color.fromRGBO(30, 20, 8, 0.6)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.fill;
-    final continentStroke = Paint()
-      ..color = const Color(0xFF3A2C14)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
-    final continentPath = Path()
-      ..moveTo(w * 0.16, h * 0.69)
-      ..quadraticBezierTo(w * 0.21, h * 0.54, w * 0.27, h * 0.46)
-      ..quadraticBezierTo(w * 0.35, h * 0.37, w * 0.43, h * 0.38)
-      ..quadraticBezierTo(w * 0.51, h * 0.40, w * 0.56, h * 0.35)
-      ..quadraticBezierTo(w * 0.64, h * 0.27, w * 0.72, h * 0.33)
-      ..quadraticBezierTo(w * 0.79, h * 0.37, w * 0.83, h * 0.50)
-      ..quadraticBezierTo(w * 0.85, h * 0.62, w * 0.81, h * 0.71)
-      ..quadraticBezierTo(w * 0.76, h * 0.81, w * 0.69, h * 0.83)
-      ..quadraticBezierTo(w * 0.61, h * 0.85, w * 0.53, h * 0.81)
-      ..quadraticBezierTo(w * 0.45, h * 0.77, w * 0.37, h * 0.81)
-      ..quadraticBezierTo(w * 0.29, h * 0.84, w * 0.23, h * 0.79)
-      ..close();
-    canvas.drawPath(continentPath, continentPaint);
-    canvas.drawPath(continentPath, continentStroke);
-
-    // 内陆纹理
-    final texturePaint = Paint()
-      ..color = const Color(0xFF2A1C08)
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(Path()..moveTo(w * 0.32, h * 0.62)..quadraticBezierTo(w * 0.37, h * 0.56, w * 0.44, h * 0.60)..quadraticBezierTo(w * 0.51, h * 0.63, w * 0.53, h * 0.58)..quadraticBezierTo(w * 0.57, h * 0.52, w * 0.64, h * 0.57), texturePaint..strokeWidth = 0.8);
-    canvas.drawPath(Path()..moveTo(w * 0.35, h * 0.71)..quadraticBezierTo(w * 0.41, h * 0.67, w * 0.47, h * 0.70)..quadraticBezierTo(w * 0.53, h * 0.73, w * 0.59, h * 0.68), texturePaint..strokeWidth = 0.6);
-
-    // 山脉
-    final mountainPaint = Paint()
-      ..color = const Color.fromRGBO(90, 68, 32, 0.6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    canvas.drawPath(Path()..moveTo(w * 0.41, h * 0.44)..lineTo(w * 0.44, h * 0.38)..lineTo(w * 0.47, h * 0.44), mountainPaint);
-    canvas.drawPath(Path()..moveTo(w * 0.45, h * 0.43)..lineTo(w * 0.47, h * 0.37)..lineTo(w * 0.51, h * 0.43), mountainPaint);
-    canvas.drawPath(Path()..moveTo(w * 0.49, h * 0.42)..lineTo(w * 0.52, h * 0.36)..lineTo(w * 0.55, h * 0.42), mountainPaint);
-
-    // 湖泊
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.61, h * 0.65), width: w * 0.12, height: h * 0.09),
-      Paint()..color = const Color.fromRGBO(40, 60, 80, 0.5)..style = PaintingStyle.fill);
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.61, h * 0.65), width: w * 0.12, height: h * 0.09),
-      Paint()..color = const Color(0xFF2A3A4A)..strokeWidth = 0.8..style = PaintingStyle.stroke);
-
-    // 主城 - 天元城
-    final cx = w * 0.49, cy = h * 0.57;
-    canvas.drawRect(Rect.fromLTWH(cx - 7, cy - 10, 26, 20),
-      Paint()..color = const Color.fromRGBO(20, 14, 4, 0.8)..style = PaintingStyle.fill);
-    canvas.drawRect(Rect.fromLTWH(cx - 7, cy - 10, 26, 20),
-      Paint()..color = TianniColors.gold..strokeWidth = 1..style = PaintingStyle.stroke);
-    canvas.drawPath(Path()..moveTo(cx - 10, cy - 10)..lineTo(cx + 6, cy - 22)..lineTo(cx + 22, cy - 10),
-      Paint()..color = const Color.fromRGBO(10, 7, 2, 0.8)..style = PaintingStyle.fill);
-    canvas.drawPath(Path()..moveTo(cx - 10, cy - 10)..lineTo(cx + 6, cy - 22)..lineTo(cx + 22, cy - 10),
-      Paint()..color = TianniColors.gold..strokeWidth = 1..style = PaintingStyle.stroke);
-
-    // 秘境圆环
-    canvas.drawCircle(Offset(w * 0.35, h * 0.60), w * 0.032,
-      Paint()..color = const Color(0xFF5A4420)..strokeWidth = 0.8..style = PaintingStyle.stroke);
-
-    // 魔域
-    canvas.drawPath(Path()
-      ..moveTo(w * 0.69, h * 0.54)..lineTo(w * 0.73, h * 0.50)..lineTo(w * 0.76, h * 0.56)..lineTo(w * 0.77, h * 0.60)
-      ..lineTo(w * 0.74, h * 0.62)..lineTo(w * 0.71, h * 0.65)..lineTo(w * 0.69, h * 0.61)..close(),
-      Paint()..color = const Color.fromRGBO(30, 5, 5, 0.5)..style = PaintingStyle.fill);
-    canvas.drawPath(Path()
-      ..moveTo(w * 0.69, h * 0.54)..lineTo(w * 0.73, h * 0.50)..lineTo(w * 0.76, h * 0.56)..lineTo(w * 0.77, h * 0.60)
-      ..lineTo(w * 0.74, h * 0.62)..lineTo(w * 0.71, h * 0.65)..lineTo(w * 0.69, h * 0.61)..close(),
-      Paint()..color = const Color(0xFF8B1A1A)..strokeWidth = 0.8..style = PaintingStyle.stroke);
-
-    // 当前位置标记
-    canvas.drawCircle(Offset(cx + 6, cy + 14), 5,
-      Paint()..color = TianniColors.goldBright..strokeWidth = 1..style = PaintingStyle.stroke);
-    canvas.drawCircle(Offset(cx + 6, cy + 14), 2,
-      Paint()..color = TianniColors.goldBright..style = PaintingStyle.fill);
-
-    // 边框
-    canvas.drawRect(Rect.fromLTWH(4, 4, w - 8, h - 8),
-      Paint()..color = const Color(0xFF3A2C14)..strokeWidth = 0.8..style = PaintingStyle.stroke);
-    canvas.drawRect(Rect.fromLTWH(8, 8, w - 16, h - 16),
-      Paint()..color = const Color(0xFF1A1208)..strokeWidth = 0.4..style = PaintingStyle.stroke);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ============================================================
@@ -601,65 +285,58 @@ class _BottomMenu extends StatelessWidget {
   final String active;
   final List<Map<String, String>> items;
   final void Function(String id) onSelect;
+  final bool sub;
 
-  const _BottomMenu({required this.active, required this.items, required this.onSelect});
+  const _BottomMenu({
+    required this.active,
+    required this.items,
+    required this.onSelect,
+    this.sub = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 62,
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: TianniColors.goldDark2, width: 1)),
-        color: TianniColors.bg,
-      ),
+    return SizedBox(
+      height: sub ? 36 : 44,
       child: Row(
-        children: items.asMap().entries.map((entry) {
-          final idx = entry.key;
-          final item = entry.value;
+        children: items.map((item) {
           final isActive = active == item['id'];
           return Expanded(
             child: GestureDetector(
               onTap: () => onSelect(item['id']!),
+              behavior: HitTestBehavior.opaque,
               child: Container(
-                decoration: BoxDecoration(
-                  border: idx < items.length - 1
-                      ? const Border(right: BorderSide(color: TianniColors.inkLight, width: 1))
-                      : null,
-                ),
+                color: isActive ? const Color.fromRGBO(200, 169, 110, 0.04) : Colors.transparent,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      width: isActive ? 30 : 0,
-                      height: 2,
-                      color: TianniColors.gold,
-                    ),
-                    const Spacer(),
-                    Container(
-                      width: 26, height: 26,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: isActive ? TianniColors.gold : TianniColors.inkMid),
-                        color: isActive ? const Color.fromRGBO(200, 169, 110, 0.08) : Colors.transparent,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(item['icon']!,
-                        style: TextStyle(
-                          color: isActive ? TianniColors.goldBright : TianniColors.goldDark,
-                          fontSize: 13,
-                          height: 1,
+                    if (!sub)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        width: isActive ? 22 : 0,
+                        height: 2,
+                        decoration: BoxDecoration(
+                          color: TianniColors.gold,
+                          boxShadow: isActive ? [const BoxShadow(color: TianniColors.gold, blurRadius: 3, spreadRadius: -1)] : null,
                         ),
                       ),
+                    if (!sub) const Spacer(),
+                    Text(item['icon']!,
+                      style: TextStyle(
+                        color: isActive ? TianniColors.goldBright : sub ? TianniColors.goldDark2 : TianniColors.goldDark,
+                        fontSize: sub ? 14 : 13,
+                        height: 1,
+                      ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: sub ? 2 : 1),
                     Text(item['label']!,
                       style: TextStyle(
-                        color: isActive ? TianniColors.gold : TianniColors.goldDark,
-                        fontSize: 10,
+                        color: isActive ? TianniColors.gold : sub ? TianniColors.goldDark2 : TianniColors.goldDark,
+                        fontSize: sub ? 9 : 10,
                         letterSpacing: 1,
                       ),
                     ),
-                    const Spacer(),
+                    if (!sub) const Spacer(),
                   ],
                 ),
               ),
@@ -674,78 +351,229 @@ class _BottomMenu extends StatelessWidget {
 // ============================================================
 // 修炼面板
 // ============================================================
-class _CultivatePanel extends StatelessWidget {
-  const _CultivatePanel();
+class _CultivatePanel extends ConsumerWidget {
+  final CharacterData? character;
+  const _CultivatePanel({this.character});
 
   @override
-  Widget build(BuildContext context) {
-    final items = [
-      {'name': '天逆剑诀', 'level': 'Lv.8', 'type': '剑修', 'effect': '攻击 +580', 'status': '修炼中'},
-      {'name': '混沌玄功', 'level': 'Lv.5', 'type': '通用', 'effect': '修为 +30%', 'status': '未修炼'},
-      {'name': '龙象伏虎功', 'level': 'Lv.3', 'type': '体修', 'effect': '气血 +2000', 'status': '未修炼'},
-    ];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gameTime = ref.watch(gameClockProvider);
+    final c = character;
+    final realm = c?.realmName ?? '炼气期';
+    final layer = c?.layer ?? 1;
+    final xpPercent = c?.xpPercent ?? 0;
+    final bon = c?.bon ?? 10;
+    final daoXin = c?.dao ?? 50;
+    final qi = c?.qi ?? 10;
+    final element = c?.rootElement ?? '金';
+    final purity = c?.rootPurity ?? '下品';
 
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
-        const Text('修\u3000炼', textAlign: TextAlign.center,
-          style: TextStyle(color: TianniColors.gold, fontSize: 14, letterSpacing: 4),
-        ),
-        const SizedBox(height: 8),
-        const InkDivider(thin: true),
-        const SizedBox(height: 8),
-        ...items.map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: AncientBorder(
-            gold: item['status'] == '修炼中',
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+    // 修炼速率估（简化）
+    final baseRate = switch (c?.realmIndex ?? 0) {
+      < 2 => 10.0,
+      < 5 => 6.0,
+      < 8 => 4.0,
+      _ => 2.5,
+    };
+    final purityMult = switch (purity) {
+      '天品' => 3.0, '极品' => 2.0, '上品' => 1.6, '中品' => 1.3, _ => 1.0,
+    };
+    final bonMult = bon / 100;
+    final shichenBonus = gameTime.shichen.element == element ? 1.15 : 1.0;
+    final rate = (baseRate * purityMult * bonMult * shichenBonus * (daoXin / 100)).toStringAsFixed(1);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 当前境界
+          Row(
+            children: [
+              Transform.rotate(angle: 0.785, child: Container(width: 6, height: 6, decoration: BoxDecoration(border: Border.all(color: TianniColors.gold)))),
+              const SizedBox(width: 8),
+              Text(realm, style: const TextStyle(color: TianniColors.goldBright, fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 8),
+              Text('第${layer}层', style: const TextStyle(color: TianniColors.goldDim, fontSize: 12)),
+              const Spacer(),
+              Text('$xpPercent%', style: const TextStyle(color: TianniColors.gold, fontSize: 11)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          // 境界进度
+          Container(
+            height: 4,
+            decoration: BoxDecoration(color: TianniColors.inkLight, border: Border.all(color: TianniColors.inkMid, width: 0.3)),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: xpPercent / 100,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(colors: [TianniColors.goldDark, TianniColors.goldBright]),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          // 修炼速率（五行灵感）
+          Text('修炼速率', style: const TextStyle(color: TianniColors.goldBright, fontSize: 12, letterSpacing: 2)),
+          const SizedBox(height: 6),
+          _RateRow(label: '$element灵根$purity', value: '×${purityMult.toStringAsFixed(1)}', color: TianniColors.gold),
+          _RateRow(label: '根骨加成', value: '×${bonMult.toStringAsFixed(2)}', color: const Color(0xFFC8A96E)),
+          _RateRow(label: '${gameTime.shichen.name} · ${gameTime.shichen.element}行${shichenBonus > 1 ? "+" : ""}${((shichenBonus - 1) * 100).round()}%', value: '×${shichenBonus.toStringAsFixed(2)}', color: const Color(0xFF9B6FD4)),
+          _RateRow(label: '道心', value: '×${(daoXin / 100).toStringAsFixed(2)}', color: TianniColors.goldDim),
+          const SizedBox(height: 4),
+          Container(height: 0.5, color: TianniColors.inkMid),
+          const SizedBox(height: 6),
+          // 最终速率
+          Row(
+            children: [
+              const Text('当前速率', style: TextStyle(color: TianniColors.goldBright, fontSize: 13, letterSpacing: 2)),
+              const Spacer(),
+              Text('$rate XP/秒', style: const TextStyle(color: TianniColors.gold, fontSize: 14, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // 时辰提示
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.all(color: TianniColors.inkLight),
+              color: TianniColors.bgCard,
+            ),
             child: Row(
               children: [
+                const Text('辰', style: TextStyle(color: TianniColors.gold, fontSize: 13)),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(item['name']!, style: const TextStyle(color: TianniColors.goldBright, fontSize: 13, letterSpacing: 2)),
-                          const SizedBox(width: 6),
-                          Text(item['level']!, style: const TextStyle(color: TianniColors.goldDark, fontSize: 9)),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 3),
-                            decoration: BoxDecoration(border: Border.all(color: TianniColors.inkMid)),
-                            child: Text(item['type']!, style: const TextStyle(color: TianniColors.goldDark2, fontSize: 9)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(item['effect']!, style: const TextStyle(color: TianniColors.goldDim, fontSize: 10)),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: item['status'] == '修炼中' ? TianniColors.gold : TianniColors.goldDark2),
-                  ),
-                  child: Text(item['status']!,
-                    style: TextStyle(
-                      color: item['status'] == '修炼中' ? TianniColors.gold : TianniColors.goldDark,
-                      fontSize: 10, letterSpacing: 1,
-                    ),
+                  child: Text(
+                    '当前${gameTime.shichen.name}（${gameTime.shichen.period}），${gameTime.shichen.element}行灵气${gameTime.shichen.element == element ? "旺盛" : "平稳"}',
+                    style: const TextStyle(color: TianniColors.goldDim, fontSize: 10, letterSpacing: 1),
                   ),
                 ),
               ],
             ),
           ),
-        )),
+          const SizedBox(height: 20),
+          // 修炼按钮
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: GestureDetector(
+              onTap: () {},
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: TianniColors.gold, width: 1.5),
+                  color: TianniColors.gold.withValues(alpha: 0.08),
+                ),
+                alignment: Alignment.center,
+                child: const Text('开始修炼', style: TextStyle(color: TianniColors.goldBright, fontSize: 15, letterSpacing: 6)),
+              ),
+            ),
+          ),
+          const Text('修炼可离线挂机，离线速率 ×0.6', textAlign: TextAlign.center,
+            style: TextStyle(color: TianniColors.goldDark2, fontSize: 9),
+          ),
+          const SizedBox(height: 18),
+          // 下一境界
+          const _SectionDivider(label: '道 途'),
+          const SizedBox(height: 8),
+          _NextRealmInfo(realmIndex: c?.realmIndex ?? 0, layer: layer, xpPercent: xpPercent),
+          const SizedBox(height: 16),
+          // 当前功法
+          const _SectionDivider(label: '功 法'),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(border: Border.all(color: TianniColors.inkLight)),
+            child: const Row(
+              children: [
+                Text('太虚吐纳术', style: TextStyle(color: TianniColors.goldBright, fontSize: 12, letterSpacing: 2)),
+                Spacer(),
+                Text('入门', style: TextStyle(color: TianniColors.goldDim, fontSize: 10)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text('基础吐纳之法，引天地灵气入体', style: TextStyle(color: TianniColors.goldDark2, fontSize: 9)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionDivider extends StatelessWidget {
+  final String label;
+  const _SectionDivider({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(width: 4, height: 4, decoration: const BoxDecoration(color: TianniColors.gold, shape: BoxShape.circle)),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(color: TianniColors.gold, fontSize: 11, letterSpacing: 3)),
+        const SizedBox(width: 8),
+        const Expanded(child: Divider(color: TianniColors.inkMid, thickness: 0.5)),
       ],
     );
   }
 }
 
+class _NextRealmInfo extends StatelessWidget {
+  final int realmIndex;
+  final int layer;
+  final int xpPercent;
+  const _NextRealmInfo({required this.realmIndex, required this.layer, required this.xpPercent});
+
+  @override
+  Widget build(BuildContext context) {
+    final realms = CharacterData.realms;
+    final isBreakthrough = layer >= 9;
+    final nextRealm = realmIndex < realms.length - 1 ? realms[realmIndex + (isBreakthrough ? 1 : 0)] : '大道尽头';
+    final target = isBreakthrough ? '突破至$nextRealm' : '第${layer + 1}层 · $nextRealm';
+    return Row(
+      children: [
+        Text(isBreakthrough ? '破' : '→', style: const TextStyle(color: TianniColors.gold, fontSize: 12)),
+        const SizedBox(width: 8),
+        Text(target, style: const TextStyle(color: TianniColors.goldBright, fontSize: 12, letterSpacing: 1)),
+        const Spacer(),
+        if (isBreakthrough)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(border: Border.all(color: TianniColors.crimson)),
+            child: const Text('需手动突破', style: TextStyle(color: TianniColors.crimson, fontSize: 9)),
+          ),
+      ],
+    );
+  }
+}
+
+class _RateRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _RateRow({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Row(
+        children: [
+          Container(width: 3, height: 3, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: TianniColors.goldDim, fontSize: 10)),
+          const Spacer(),
+          Text(value, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
 // ============================================================
-// 征战面板
+// 洞府面板
 // ============================================================
 class _BattlePanel extends StatelessWidget {
   const _BattlePanel();
@@ -832,7 +660,7 @@ class _BattlePanel extends StatelessWidget {
 }
 
 // ============================================================
-// 宗门面板
+// 游历面板
 // ============================================================
 class _SectPanel extends StatelessWidget {
   const _SectPanel();
@@ -936,87 +764,336 @@ class _SectStat extends StatelessWidget {
 // ============================================================
 // 储物面板
 // ============================================================
-class _BagPanel extends StatelessWidget {
+class _BagPanel extends StatefulWidget {
   const _BagPanel();
 
   @override
-  Widget build(BuildContext context) {
-    final items = [
-      {'name': '天灵草', 'type': '灵草', 'count': 24, 'color': const Color(0xFF4A6741)},
-      {'name': '玄铁矿', 'type': '矿石', 'count': 8, 'color': const Color(0xFF5A5A6A)},
-      {'name': '筑基丹', 'type': '丹药', 'count': 3, 'color': TianniColors.gold},
-      {'name': '破邪符', 'type': '符箓', 'count': 12, 'color': const Color(0xFF8B6030)},
-      {'name': '寒铁剑', 'type': '法宝', 'count': 1, 'color': TianniColors.goldBright},
-      {'name': '玉液', 'type': '灵液', 'count': 5, 'color': const Color(0xFF4A7A8A)},
-    ];
+  State<_BagPanel> createState() => _BagPanelState();
+}
 
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
-        const Text('储\u3000物', textAlign: TextAlign.center,
-          style: TextStyle(color: TianniColors.gold, fontSize: 14, letterSpacing: 4),
+class _BagPanelState extends State<_BagPanel> {
+  static const _cols = 5;
+  static const _totalSlots = 50;
+  String _activeTab = '全部';
+  String _query = '';
+  final _searchCtrl = TextEditingController();
+
+  static const _tabs = ['全部', '丹药', '材料', '装备', '符箓'];
+
+  /// 品阶色 (8 阶)
+  static const Map<String, Color> _gradeColors = {
+    '凡': Color(0xFF8B8378),
+    '良': Color(0xFF5B9A3F),
+    '灵': Color(0xFF4A90D9),
+    '宝': Color(0xFF9B6FD4),
+    '珍': Color(0xFFFF8C00),
+    '仙': Color(0xFFFFD700),
+    '圣': Color(0xFFFF5555),
+    '道': Color(0xFF00FFFF),
+  };
+
+  static final _allItems = [
+    _BagSlotData(name: '天灵草', count: 156, grade: '凡', cat: '材料'),
+    _BagSlotData(name: '玄铁矿', count: 8, grade: '凡', cat: '材料'),
+    _BagSlotData(name: '筑基丹', count: 3, grade: '灵', cat: '丹药'),
+    _BagSlotData(name: '破邪符', count: 12, grade: '良', cat: '符箓'),
+    _BagSlotData(name: '寒铁剑', count: 1, grade: '宝', cat: '装备'),
+    _BagSlotData(name: '玉液', count: 5, grade: '灵', cat: '丹药'),
+    _BagSlotData(name: '火灵石', count: 120, grade: '良', cat: '材料'),
+    _BagSlotData(name: '兽骨', count: 6, grade: '凡', cat: '材料'),
+    _BagSlotData(name: '雾隐草', count: 99, grade: '良', cat: '材料'),
+    _BagSlotData(name: '聚气丹', count: 7, grade: '灵', cat: '丹药'),
+    _BagSlotData(name: '铁甲衣', count: 1, grade: '良', cat: '装备'),
+    _BagSlotData(name: '烈火符', count: 200, grade: '灵', cat: '符箓'),
+  ];
+
+  List<_BagSlotData> get _filtered {
+    var list = _allItems;
+    if (_activeTab != '全部') list = list.where((i) => i.cat == _activeTab).toList();
+    if (_query.isNotEmpty) list = list.where((i) => i.name.contains(_query)).toList();
+    return list;
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _filtered;
+    final usedSlots = _allItems.length;
+
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.translucent,
+      child: Column(
+        children: [
+          // 标题 + 容量
+          Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+          child: Row(
+            children: [
+              Container(width: 4, height: 4, decoration: const BoxDecoration(color: TianniColors.gold, shape: BoxShape.circle)),
+              const SizedBox(width: 6),
+              const Text('储 物', style: TextStyle(color: TianniColors.goldBright, fontSize: 14, letterSpacing: 4)),
+              const Spacer(),
+              Text('$usedSlots / $_totalSlots',
+                style: const TextStyle(color: TianniColors.gold, fontSize: 11)),
+              const SizedBox(width: 4),
+              const Text('格', style: TextStyle(color: TianniColors.goldDark2, fontSize: 9)),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        const InkDivider(thin: true),
-        const SizedBox(height: 4),
-        const Text('储物袋 · 剩余 18/30 格',
-          style: TextStyle(color: TianniColors.goldDark, fontSize: 9, letterSpacing: 2),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 6, runSpacing: 6,
-          children: [
-            ...items.map((item) => _BagItem(
-              icon: (item['name'] as String)[0],
-              name: item['name'] as String,
-              count: item['count'] as int,
-              color: item['color'] as Color,
-            )),
-            // 空格子
-            for (int i = 0; i < 3; i++)
-              Container(
-                width: 80, height: 80,
-                decoration: BoxDecoration(border: Border.all(color: TianniColors.inkLight)),
-                alignment: Alignment.center,
-                child: const Text('＋', style: TextStyle(color: TianniColors.inkLight, fontSize: 18)),
+        // 搜索 + 分类 Tab
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 30,
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: (v) => setState(() => _query = v),
+                    style: const TextStyle(color: TianniColors.goldBright, fontSize: 11),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                      filled: true,
+                      fillColor: TianniColors.bgDark,
+                      hintText: '搜索物品',
+                      hintStyle: const TextStyle(color: TianniColors.goldDark2, fontSize: 10),
+                      prefixIcon: const Icon(Icons.search, color: TianniColors.goldDark2, size: 14),
+                      suffixIcon: _query.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () { _searchCtrl.clear(); setState(() => _query = ''); },
+                              child: const Icon(Icons.close, color: TianniColors.goldDark2, size: 14),
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: const BorderSide(color: TianniColors.inkLight),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: const BorderSide(color: TianniColors.inkLight),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: const BorderSide(color: TianniColors.goldDark),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-          ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        SizedBox(
+          height: 28,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            children: _tabs.map((tab) {
+              final active = _activeTab == tab;
+              return GestureDetector(
+                onTap: () => setState(() => _activeTab = tab),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  margin: const EdgeInsets.only(right: 6),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: active ? TianniColors.gold : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                  child: Text(tab,
+                    style: TextStyle(
+                      color: active ? TianniColors.goldBright : TianniColors.goldDark,
+                      fontSize: 11, letterSpacing: 2,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        Container(height: 0.5, color: TianniColors.inkMid, margin: const EdgeInsets.symmetric(horizontal: 14)),
+        const SizedBox(height: 4),
+        // 格子
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.fromLTRB(10, 2, 10, 10),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: _cols,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+              childAspectRatio: 1.05,
+            ),
+            itemCount: _totalSlots,
+            itemBuilder: (context, index) {
+              if (index < items.length) return _BagSlot(item: items[index]);
+              if (index < _totalSlots) return const _EmptySlot();
+              return const SizedBox.shrink();
+            },
+          ),
         ),
       ],
+      ),
     );
   }
 }
 
-class _BagItem extends StatelessWidget {
-  final String icon, name;
+class _BagSlotData {
+  final String name;
   final int count;
-  final Color color;
-  const _BagItem({required this.icon, required this.name, required this.count, required this.color});
+  final String grade;
+  final String cat;
+  const _BagSlotData({
+    required this.name,
+    required this.count,
+    required this.grade,
+    this.cat = '材料',
+  });
+}
+
+class _BagSlot extends StatelessWidget {
+  final _BagSlotData item;
+  const _BagSlot({required this.item});
+
+  String get _countText => item.count > 99 ? '99+' : '${item.count}';
+
+  @override
+  Widget build(BuildContext context) {
+    final gradeColor = _BagPanelState._gradeColors[item.grade] ?? TianniColors.goldDark2;
+    return GestureDetector(
+      onTap: () => _showDetail(context, gradeColor),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: gradeColor.withValues(alpha: 0.55)),
+          color: const Color.fromRGBO(10, 7, 2, 0.8),
+        ),
+        child: Stack(
+          children: [
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(item.name[0],
+                    style: TextStyle(color: gradeColor, fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(item.cat,
+                    style: const TextStyle(color: TianniColors.goldDark2, fontSize: 8, letterSpacing: 1),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              left: 2, top: 1,
+              child: Text(item.grade,
+                style: TextStyle(color: gradeColor.withValues(alpha: 0.7), fontSize: 8),
+              ),
+            ),
+            Positioned(
+              right: 2, bottom: 2,
+              child: Text(_countText,
+                style: const TextStyle(color: TianniColors.goldDark, fontSize: 9, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDetail(BuildContext context, Color gradeColor) {
+    TianniDialog.show(
+      context,
+      title: item.name,
+      subtitle: '${item.grade}品 · ${item.cat}',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _infoRow('品名', item.name),
+          _infoRow('品阶', '${item.grade}品'),
+          _infoRow('分类', item.cat),
+          _infoRow('数量', '${item.count}'),
+        ],
+      ),
+      actions: [
+        DialogAction(text: '使用', isPrimary: true, onTap: () {}),
+        DialogAction(text: '丢弃', isPrimary: false, onTap: () => Navigator.of(context).pop()),
+      ],
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 48,
+            child: Text(label, style: const TextStyle(color: TianniColors.goldDark, fontSize: 11, letterSpacing: 2)),
+          ),
+          const Text('  ', style: TextStyle(color: TianniColors.goldDark2)),
+          Expanded(
+            child: Text(value, style: const TextStyle(color: TianniColors.goldBright, fontSize: 13, letterSpacing: 2)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptySlot extends StatelessWidget {
+  const _EmptySlot();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 80, height: 80,
       decoration: BoxDecoration(
-        border: Border.all(color: TianniColors.goldDark2),
-        color: const Color.fromRGBO(10, 7, 2, 0.5),
+        border: Border.all(color: TianniColors.inkLight.withValues(alpha: 0.25)),
+        color: const Color.fromRGBO(5, 3, 1, 0.35),
       ),
-      child: Stack(
+      alignment: Alignment.center,
+      child: const Text('＋', style: TextStyle(color: TianniColors.goldDark2, fontSize: 14, fontWeight: FontWeight.w100)),
+    );
+  }
+}
+
+// ── 占位面板 ──
+class _PlaceholderPanel extends StatelessWidget {
+  final String label;
+  final String desc;
+  const _PlaceholderPanel({required this.label, required this.desc});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(icon, style: TextStyle(color: color, fontSize: 18)),
-                const SizedBox(height: 4),
-                Text(name, style: const TextStyle(color: TianniColors.goldDim, fontSize: 9, letterSpacing: 1)),
-              ],
+          Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: TianniColors.goldDark2),
             ),
+            alignment: Alignment.center,
+            child: Text('✦', style: const TextStyle(color: TianniColors.goldDim, fontSize: 18)),
           ),
-          Positioned(
-            bottom: 4, right: 5,
-            child: Text('x$count', style: const TextStyle(color: TianniColors.goldDark, fontSize: 8)),
-          ),
+          const SizedBox(height: 12),
+          Text(label, style: const TextStyle(color: TianniColors.goldBright, fontSize: 14, letterSpacing: 4)),
+          const SizedBox(height: 6),
+          Text(desc, style: const TextStyle(color: TianniColors.goldDark2, fontSize: 10)),
         ],
       ),
     );
