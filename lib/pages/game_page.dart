@@ -394,7 +394,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
       _layersGained = 0;
     });
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick(c));
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
   void _stopCultivation() {
@@ -405,7 +405,10 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
     if (c != null) CharacterStorage.save(widget.slotIndex, c).ignore();
   }
 
-  void _tick(CharacterData c) {
+  void _tick() {
+    final c = widget.character;
+    if (c == null) return;
+
     final (newXp, breakthrough, layers) = CultivationEngine.applyCultivation(
       character: c,
       seconds: 1,

@@ -139,7 +139,7 @@ class CultivationEngine {
   }
 
   /// 修炼时长（秒）→ XP 积累 → 新 xpPercent
-  /// 返回 [新 xpPercent, 是否突破, 突破次数]
+  /// 返回 [新 xpPercent (0-100), 是否突破, 突破次数]
   static (int xp, bool breakthrough, int layersGained) applyCultivation({
     required CharacterData character,
     required double seconds,
@@ -163,21 +163,25 @@ class CultivationEngine {
       inCaveTrainingRoom: inCaveTrainingRoom,
     );
 
-    final totalXpGained = (rate * seconds).round();
-    int currentXp = character.xpPercent;
-    int required = xpRequired(character.realmIndex);
+    // 将绝对 XP 按当前境界比例转为百分比增量
+    final xpGained = rate * seconds;
     int layers = 0;
+    int currentRealm = character.realmIndex;
+    final currentRequired = xpRequired(currentRealm);
+    // 用绝对 XP 计算更准确
+    double totalXp = character.xpPercent / 100.0 * currentRequired + xpGained;
 
-    int accumulated = currentXp + totalXpGained;
-    while (accumulated >= required) {
+    while (true) {
+      final required = xpRequired(currentRealm + layers).toDouble();
+      if (totalXp < required) break;
+      totalXp -= required;
       layers++;
-      accumulated -= required;
-      required = xpRequired(character.realmIndex + layers);
     }
 
-    final newXp = layers > 0 ? accumulated : accumulated;
+    final finalRequired = xpRequired(currentRealm + layers).toDouble();
+    final xp = ((totalXp / finalRequired) * 100.0).clamp(0, 100).round();
     final breakthrough = layers > 0;
 
-    return (newXp.clamp(0, 999999999), breakthrough, layers);
+    return (xp, breakthrough, layers);
   }
 }
