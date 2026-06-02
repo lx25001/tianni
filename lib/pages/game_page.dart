@@ -432,10 +432,18 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
     final c = _char;
     if (c == null) return;
 
+    // 实时重算速率（时辰可能已变化）
+    final gameTime = ref.read(gameClockProvider);
+    final element = c.rootElement;
+    final shichenMatch = gameTime.shichen.element == element ? 1.15 : 1.0;
+
     final rate = CultivationEngine.xpPerSecond(
       realmIndex: c.realmIndex,
       character: c,
+      shichenMatch: shichenMatch,
     );
+    _rate = rate; // 同步给 UI 显示的速率
+
     final xpGained = rate * 0.2;
     final required = CultivationEngine.xpRequired(c.realmIndex).toDouble();
     final percentGain = (xpGained / required) * 100.0;
@@ -460,6 +468,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
         xpPercent: newPercent.round(),
       );
       setState(() {});
+      widget.onCharacterChanged?.call(_char!);
       return;
     }
 
@@ -502,6 +511,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
     setState(() {
       _layersGained += layers;
     });
+    widget.onCharacterChanged?.call(_char!);
   }
 
   @override
