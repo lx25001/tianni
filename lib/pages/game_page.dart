@@ -372,13 +372,16 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
   bool _cultivating = false;
   double _rate = 0;
   int _layersGained = 0;
-  // 本地持有角色副本，避免回调链延迟
   CharacterData? _char;
+  double _displayPercent = 0;  // 平滑进度显示
+  int _currentRealm = 0;
 
   @override
   void initState() {
     super.initState();
     _char = widget.character;
+    _displayPercent = (_char?.xpPercent ?? 0).toDouble();
+    _currentRealm = _char?.realmIndex ?? 0;
   }
 
   @override
@@ -386,6 +389,8 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
     super.didUpdateWidget(oldWidget);
     if (!_cultivating) {
       _char = widget.character;
+      _displayPercent = (_char?.xpPercent ?? 0).toDouble();
+      _currentRealm = _char?.realmIndex ?? 0;
     }
   }
 
@@ -410,7 +415,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
       _layersGained = 0;
     });
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _timer = Timer.periodic(const Duration(milliseconds: 200), (_) => _tick());
   }
 
   void _stopCultivation() {
@@ -427,37 +432,75 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
     final c = _char;
     if (c == null) return;
 
-    final (newXp, breakthrough, layers) = CultivationEngine.applyCultivation(
+    final rate = CultivationEngine.xpPerSecond(
+      realmIndex: c.realmIndex,
       character: c,
-      seconds: 1,
     );
+    final xpGained = rate * 0.2;
+    final required = CultivationEngine.xpRequired(c.realmIndex).toDouble();
+    final percentGain = (xpGained / required) * 100.0;
 
+    double newPercent = _displayPercent + percentGain;
+    int layers = 0;
+
+    while (newPercent >= 100.0) {
+      layers++;
+      newPercent -= 100.0;
+    }
+
+    if (layers == 0) {
+      _displayPercent = newPercent;
+      _char = CharacterData(
+        surname: c.surname, givenName: c.givenName,
+        rootElement: c.rootElement, rootPurity: c.rootPurity,
+        purityRate: c.purityRate,
+        con: c.con, spi: c.spi, qi: c.qi,
+        dao: c.dao, ins: c.ins, bon: c.bon,
+        realmIndex: c.realmIndex, layer: c.layer,
+        xpPercent: newPercent.round(),
+      );
+      setState(() {});
+      return;
+    }
+
+    // 有突破
     int newLayer = c.layer + layers;
     int newRealm = c.realmIndex;
+    int realmBreaks = 0;
     while (newLayer > 9) {
       newRealm++;
       newLayer -= 9;
+      realmBreaks++;
     }
 
+    final rng = DateTime.now().microsecondsSinceEpoch;
+    int conGain = 0, spiGain = 0, qiGain = 0;
+    for (int i = 0; i < layers; i++) {
+      conGain += 1 + ((rng + i * 3) % 3);
+      spiGain += 1 + ((rng + i * 3 + 1) % 3);
+      qiGain += 1 + ((rng + i * 3 + 2) % 3);
+    }
+    for (int i = 0; i < realmBreaks; i++) {
+      conGain += 10 + ((rng + i * 7) % 21);
+      spiGain += 10 + ((rng + i * 7 + 1) % 21);
+      qiGain += 10 + ((rng + i * 7 + 2) % 21);
+    }
+
+    _displayPercent = newPercent;
+    _currentRealm = newRealm;
+
     _char = CharacterData(
-      surname: c.surname,
-      givenName: c.givenName,
-      rootElement: c.rootElement,
-      rootPurity: c.rootPurity,
+      surname: c.surname, givenName: c.givenName,
+      rootElement: c.rootElement, rootPurity: c.rootPurity,
       purityRate: c.purityRate,
-      con: c.con,
-      spi: c.spi,
-      qi: c.qi,
-      dao: c.dao,
-      ins: c.ins,
-      bon: c.bon,
-      realmIndex: newRealm,
-      layer: newLayer,
-      xpPercent: newXp,
+      con: c.con + conGain, spi: c.spi + spiGain, qi: c.qi + qiGain,
+      dao: c.dao, ins: c.ins, bon: c.bon,
+      realmIndex: newRealm, layer: newLayer,
+      xpPercent: newPercent.round(),
     );
 
     setState(() {
-      if (layers > 0) _layersGained += layers;
+      _layersGained += layers;
     });
   }
 
@@ -467,7 +510,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
     final c = _char;
     final realm = c?.realmName ?? '炼气期';
     final layer = c?.layer ?? 1;
-    final xpPercent = c?.xpPercent ?? 0;
+    final xpPercent = _displayPercent;
     final bon = c?.bon ?? 10;
     final daoXin = c?.dao ?? 50;
     final element = c?.rootElement ?? '金';
@@ -501,7 +544,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
               const SizedBox(width: 8),
               Text('第${layer}层', style: const TextStyle(color: TianniColors.goldDim, fontSize: 12)),
               const Spacer(),
-              Text('$xpPercent%', style: const TextStyle(color: TianniColors.gold, fontSize: 11)),
+              Text('${xpPercent.toStringAsFixed(1)}%', style: const TextStyle(color: TianniColors.gold, fontSize: 11)),
             ],
           ),
           const SizedBox(height: 6),
@@ -511,7 +554,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
             decoration: BoxDecoration(color: TianniColors.inkLight, border: Border.all(color: TianniColors.inkMid, width: 0.3)),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
-              widthFactor: (xpPercent / 100).clamp(0.0, 1.0),
+              widthFactor: (xpPercent / 100.0).clamp(0.0, 1.0),
               child: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(colors: [TianniColors.goldDark, TianniColors.goldBright]),
@@ -597,7 +640,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
           // 下一境界
           const _SectionDivider(label: '道 途'),
           const SizedBox(height: 8),
-          _NextRealmInfo(realmIndex: c?.realmIndex ?? 0, layer: layer, xpPercent: xpPercent),
+          _NextRealmInfo(realmIndex: c?.realmIndex ?? 0, layer: layer, xpPercent: xpPercent.round()),
           const SizedBox(height: 16),
           // 当前功法
           const _SectionDivider(label: '功 法'),
