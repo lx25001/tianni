@@ -372,6 +372,22 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
   bool _cultivating = false;
   double _rate = 0;
   int _layersGained = 0;
+  // 本地持有角色副本，避免回调链延迟
+  CharacterData? _char;
+
+  @override
+  void initState() {
+    super.initState();
+    _char = widget.character;
+  }
+
+  @override
+  void didUpdateWidget(covariant _CultivatePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_cultivating) {
+      _char = widget.character;
+    }
+  }
 
   @override
   void dispose() {
@@ -381,7 +397,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
 
   void _startCultivation() {
     if (_cultivating) return;
-    final c = widget.character;
+    final c = _char ?? widget.character;
     if (c == null) return;
 
     final rate = CultivationEngine.xpPerSecond(
@@ -400,13 +416,15 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
   void _stopCultivation() {
     _timer?.cancel();
     setState(() => _cultivating = false);
-    // 停止时立即保存
-    final c = widget.character;
-    if (c != null) CharacterStorage.save(widget.slotIndex, c).ignore();
+    final c = _char;
+    if (c != null) {
+      CharacterStorage.save(widget.slotIndex, c).ignore();
+      widget.onCharacterChanged?.call(c);
+    }
   }
 
   void _tick() {
-    final c = widget.character;
+    final c = _char;
     if (c == null) return;
 
     final (newXp, breakthrough, layers) = CultivationEngine.applyCultivation(
@@ -421,7 +439,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
       newLayer -= 9;
     }
 
-    final updated = CharacterData(
+    _char = CharacterData(
       surname: c.surname,
       givenName: c.givenName,
       rootElement: c.rootElement,
@@ -438,16 +456,15 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
       xpPercent: newXp,
     );
 
-    widget.onCharacterChanged?.call(updated);
-    if (layers > 0) {
-      setState(() => _layersGained += layers);
-    }
+    setState(() {
+      if (layers > 0) _layersGained += layers;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final gameTime = ref.watch(gameClockProvider);
-    final c = widget.character;
+    final c = _char;
     final realm = c?.realmName ?? '炼气期';
     final layer = c?.layer ?? 1;
     final xpPercent = c?.xpPercent ?? 0;
