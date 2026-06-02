@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/colors.dart';
@@ -9,6 +10,7 @@ import '../models/character_data.dart';
 import '../services/character_storage.dart';
 import '../widgets/game_map_widget.dart';
 import '../providers/game_clock_provider.dart';
+import '../services/cultivation_engine.dart';
 
 /// 游戏主界面
 class GamePage extends StatefulWidget {
@@ -50,6 +52,10 @@ class _GamePageState extends State<GamePage> {
   Future<void> _loadCharacter() async {
     final char = await CharacterStorage.load(widget.slotIndex);
     if (mounted) setState(() { _char = char; _loading = false; });
+  }
+
+  void _onCharChanged(CharacterData updated) {
+    setState(() => _char = updated);
   }
 
   String get _charName => _char?.fullName ?? '修士';
@@ -159,7 +165,7 @@ class _GamePageState extends State<GamePage> {
                 child: IndexedStack(
                   index: [..._menuItems, ..._menuRow2].indexWhere((m) => m['id'] == _activeMenu),
                   children: [
-                    _CultivatePanel(character: _char),
+                    _CultivatePanel(character: _char, onCharacterChanged: _onCharChanged, slotIndex: widget.slotIndex),
                     const _BattlePanel(),
                     const GameMapWidget(),
                     const _SectPanel(),
@@ -351,36 +357,115 @@ class _BottomMenu extends StatelessWidget {
 // ============================================================
 // 修炼面板
 // ============================================================
-class _CultivatePanel extends ConsumerWidget {
+class _CultivatePanel extends ConsumerStatefulWidget {
   final CharacterData? character;
-  const _CultivatePanel({this.character});
+  final void Function(CharacterData updated)? onCharacterChanged;
+  final int slotIndex;
+  const _CultivatePanel({this.character, this.onCharacterChanged, this.slotIndex = 0});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CultivatePanel> createState() => _CultivatePanelState();
+}
+
+class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
+  Timer? _timer;
+  bool _cultivating = false;
+  double _rate = 0;
+  int _layersGained = 0;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startCultivation() {
+    if (_cultivating) return;
+    final c = widget.character;
+    if (c == null) return;
+
+    final rate = CultivationEngine.xpPerSecond(
+      realmIndex: c.realmIndex,
+      character: c,
+    );
+    setState(() {
+      _cultivating = true;
+      _rate = rate;
+      _layersGained = 0;
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick(c));
+  }
+
+  void _stopCultivation() {
+    _timer?.cancel();
+    setState(() => _cultivating = false);
+    // 停止时立即保存
+    final c = widget.character;
+    if (c != null) CharacterStorage.save(widget.slotIndex, c).ignore();
+  }
+
+  void _tick(CharacterData c) {
+    final (newXp, breakthrough, layers) = CultivationEngine.applyCultivation(
+      character: c,
+      seconds: 1,
+    );
+
+    int newLayer = c.layer + layers;
+    int newRealm = c.realmIndex;
+    while (newLayer > 9) {
+      newRealm++;
+      newLayer -= 9;
+    }
+
+    final updated = CharacterData(
+      surname: c.surname,
+      givenName: c.givenName,
+      rootElement: c.rootElement,
+      rootPurity: c.rootPurity,
+      purityRate: c.purityRate,
+      con: c.con,
+      spi: c.spi,
+      qi: c.qi,
+      dao: c.dao,
+      ins: c.ins,
+      bon: c.bon,
+      realmIndex: newRealm,
+      layer: newLayer,
+      xpPercent: newXp,
+    );
+
+    widget.onCharacterChanged?.call(updated);
+    if (layers > 0) {
+      setState(() => _layersGained += layers);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final gameTime = ref.watch(gameClockProvider);
-    final c = character;
+    final c = widget.character;
     final realm = c?.realmName ?? '炼气期';
     final layer = c?.layer ?? 1;
     final xpPercent = c?.xpPercent ?? 0;
     final bon = c?.bon ?? 10;
     final daoXin = c?.dao ?? 50;
-    final qi = c?.qi ?? 10;
     final element = c?.rootElement ?? '金';
     final purity = c?.rootPurity ?? '下品';
 
-    // 修炼速率估（简化）
-    final baseRate = switch (c?.realmIndex ?? 0) {
-      < 2 => 10.0,
-      < 5 => 6.0,
-      < 8 => 4.0,
-      _ => 2.5,
-    };
-    final purityMult = switch (purity) {
-      '天品' => 3.0, '极品' => 2.0, '上品' => 1.6, '中品' => 1.3, _ => 1.0,
-    };
-    final bonMult = bon / 100;
-    final shichenBonus = gameTime.shichen.element == element ? 1.15 : 1.0;
-    final rate = (baseRate * purityMult * bonMult * shichenBonus * (daoXin / 100)).toStringAsFixed(1);
+    // 用引擎计算各项因子
+    final purityRate = c?.purityRate ?? 1.0;
+    final purityMult = purityRate;
+    final boneMult = CultivationEngine.boneBonus(bon);
+    final daoMult = CultivationEngine.daoBonus(daoXin);
+    final shichenMatch = gameTime.shichen.element == element ? 1.15 : 1.0;
+    final rate = c != null
+        ? CultivationEngine.xpPerSecond(
+            realmIndex: c.realmIndex,
+            character: c,
+            shichenMatch: shichenMatch,
+          )
+        : 10.0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
@@ -406,7 +491,7 @@ class _CultivatePanel extends ConsumerWidget {
             decoration: BoxDecoration(color: TianniColors.inkLight, border: Border.all(color: TianniColors.inkMid, width: 0.3)),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
-              widthFactor: xpPercent / 100,
+              widthFactor: (xpPercent / 100).clamp(0.0, 1.0),
               child: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(colors: [TianniColors.goldDark, TianniColors.goldBright]),
@@ -414,23 +499,27 @@ class _CultivatePanel extends ConsumerWidget {
               ),
             ),
           ),
+          if (_cultivating) ...[
+            const SizedBox(height: 4),
+            Text('修炼中 · ${_layersGained > 0 ? "已突破$_layersGained层" : "积累中..."}',
+              style: const TextStyle(color: TianniColors.gold, fontSize: 9)),
+          ],
           const SizedBox(height: 14),
-          // 修炼速率（五行灵感）
+          // 修炼速率
           Text('修炼速率', style: const TextStyle(color: TianniColors.goldBright, fontSize: 12, letterSpacing: 2)),
           const SizedBox(height: 6),
           _RateRow(label: '$element灵根$purity', value: '×${purityMult.toStringAsFixed(1)}', color: TianniColors.gold),
-          _RateRow(label: '根骨加成', value: '×${bonMult.toStringAsFixed(2)}', color: const Color(0xFFC8A96E)),
-          _RateRow(label: '${gameTime.shichen.name} · ${gameTime.shichen.element}行${shichenBonus > 1 ? "+" : ""}${((shichenBonus - 1) * 100).round()}%', value: '×${shichenBonus.toStringAsFixed(2)}', color: const Color(0xFF9B6FD4)),
-          _RateRow(label: '道心', value: '×${(daoXin / 100).toStringAsFixed(2)}', color: TianniColors.goldDim),
+          _RateRow(label: '根骨加成', value: '×${(1 + boneMult).toStringAsFixed(2)}', color: const Color(0xFFC8A96E)),
+          _RateRow(label: '${gameTime.shichen.name} · ${gameTime.shichen.element}行${shichenMatch > 1 ? "+" : ""}${((shichenMatch - 1) * 100).round()}%', value: '×${shichenMatch.toStringAsFixed(2)}', color: const Color(0xFF9B6FD4)),
+          _RateRow(label: '道心', value: '×${(1 + daoMult).toStringAsFixed(2)}', color: TianniColors.goldDim),
           const SizedBox(height: 4),
           Container(height: 0.5, color: TianniColors.inkMid),
           const SizedBox(height: 6),
-          // 最终速率
           Row(
             children: [
               const Text('当前速率', style: TextStyle(color: TianniColors.goldBright, fontSize: 13, letterSpacing: 2)),
               const Spacer(),
-              Text('$rate XP/秒', style: const TextStyle(color: TianniColors.gold, fontSize: 14, fontWeight: FontWeight.bold)),
+              Text('${rate.toStringAsFixed(1)} XP/秒', style: const TextStyle(color: TianniColors.gold, fontSize: 14, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 14),
@@ -460,19 +549,29 @@ class _CultivatePanel extends ConsumerWidget {
             width: double.infinity,
             height: 42,
             child: GestureDetector(
-              onTap: () {},
+              onTap: _cultivating ? _stopCultivation : _startCultivation,
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: TianniColors.gold, width: 1.5),
-                  color: TianniColors.gold.withValues(alpha: 0.08),
+                  border: Border.all(color: _cultivating ? TianniColors.goldDim : TianniColors.gold, width: 1.5),
+                  color: _cultivating
+                      ? TianniColors.inkLight
+                      : TianniColors.gold.withValues(alpha: 0.08),
                 ),
                 alignment: Alignment.center,
-                child: const Text('开始修炼', style: TextStyle(color: TianniColors.goldBright, fontSize: 15, letterSpacing: 6)),
+                child: Text(
+                  _cultivating ? '停止修炼' : '开始修炼',
+                  style: TextStyle(
+                    color: _cultivating ? TianniColors.goldDim : TianniColors.goldBright,
+                    fontSize: 15, letterSpacing: 6,
+                  ),
+                ),
               ),
             ),
           ),
-          const Text('修炼可离线挂机，离线速率 ×0.6', textAlign: TextAlign.center,
-            style: TextStyle(color: TianniColors.goldDark2, fontSize: 9),
+          const SizedBox(height: 4),
+          Text(_cultivating ? '点击停止后将自动保存进度' : '修炼可离线挂机，离线速率 ×0.6',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: TianniColors.goldDark2, fontSize: 9),
           ),
           const SizedBox(height: 18),
           // 下一境界
