@@ -39,7 +39,8 @@ class Inventory {
   factory Inventory.fromSlotList(List<InventorySlot> slotList, {int capacity = 30}) {
     final inv = Inventory(capacity: capacity);
     for (final s in slotList) {
-      if (s.slotIdx < inv.slots.length) {
+      // 防脏数据：仅当目标槽位为空才直接放入，否则找空位
+      if (s.slotIdx < inv.slots.length && inv.slots[s.slotIdx] == null) {
         inv.slots[s.slotIdx] = s;
       } else {
         // 找一个空位
@@ -160,5 +161,50 @@ class Inventory {
     final inv = copy();
     final ok = inv.removeItemBySlot(slotIdx, count);
     return (ok, inv);
+  }
+
+  /// 交换两个槽位的物品（用于 UI 拖拽整理）。
+  bool swapSlots(int indexA, int indexB) {
+    if (indexA < 0 || indexA >= capacity || indexB < 0 || indexB >= capacity) return false;
+    if (indexA == indexB) return true;
+
+    final temp = slots[indexA];
+    slots[indexA] = slots[indexB];
+    if (slots[indexA] != null) slots[indexA]!.slotIdx = indexA;
+    slots[indexB] = temp;
+    if (slots[indexB] != null) slots[indexB]!.slotIdx = indexB;
+    return true;
+  }
+
+  /// 不可变版槽位交换
+  Inventory swapped(int indexA, int indexB) {
+    final inv = copy();
+    inv.swapSlots(indexA, indexB);
+    return inv;
+  }
+
+  /// 一键整理：消除空洞，合并同类项。
+  void compact() {
+    final allItems = slots.where((s) => s != null).cast<InventorySlot>().toList();
+
+    // 先按 itemId 排序以便合并
+    allItems.sort((a, b) => a.itemId.compareTo(b.itemId));
+
+    // 清空背包
+    for (int i = 0; i < capacity; i++) {
+      slots[i] = null;
+    }
+
+    // 重新按序添加，自动填补空洞 + 合并未满堆叠
+    for (final item in allItems) {
+      addItem(item.itemId, item.count, data: item.data);
+    }
+  }
+
+  /// 不可变版一键整理
+  Inventory compacted() {
+    final inv = copy();
+    inv.compact();
+    return inv;
   }
 }

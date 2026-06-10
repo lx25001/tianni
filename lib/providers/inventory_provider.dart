@@ -44,6 +44,22 @@ class InventoryNotifier extends StateNotifier<Inventory> {
     return ok;
   }
 
+  /// 交换两个槽位
+  Future<void> swapSlots(int a, int b) async {
+    final inv = state.copy();
+    inv.swapSlots(a, b);
+    state = inv;
+    await InventoryDao.saveAll(slot, state);
+  }
+
+  /// 一键整理
+  Future<void> compact() async {
+    final inv = state.copy();
+    inv.compact();
+    state = inv;
+    await InventoryDao.saveAll(slot, state);
+  }
+
   void refresh() {
     _load();
   }
