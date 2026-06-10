@@ -58,9 +58,10 @@ class Inventory {
 
   /// 添加物品。优先堆叠到已有槽位。
   /// [data] 装备/法宝的动态属性 JSON，传入后仅堆叠到 data 完全相同的槽位。
-  bool addItem(String itemId, int count, {String? data}) {
+  /// [返回] int: 无法放入背包的剩余数量（0 = 全部成功）。
+  int addItem(String itemId, int count, {String? data}) {
     final tmpl = ItemRegistry.get(itemId);
-    if (tmpl == null) return false;
+    if (tmpl == null) return count;
 
     int remaining = count;
 
@@ -73,7 +74,7 @@ class Inventory {
           final add = remaining < room ? remaining : room;
           slot.count += add;
           remaining -= add;
-          if (remaining <= 0) return true;
+          if (remaining <= 0) return 0;
         }
       }
     }
@@ -81,17 +82,20 @@ class Inventory {
     // 新槽位
     while (remaining > 0) {
       final idx = slots.indexWhere((s) => s == null);
-      if (idx < 0) return false; // 背包满
+      if (idx < 0) break; // 背包满，跳出，剩余数量外抛
       final add = tmpl.stackable ? (remaining > tmpl.stackMax ? tmpl.stackMax : remaining) : 1;
       slots[idx] = InventorySlot(itemId: itemId, count: add, slotIdx: idx, data: data);
       remaining -= add;
     }
-    return true;
+    return remaining;
   }
 
   /// 移除物品（按 itemId）。优先从堆叠数少的槽位取。
   /// ⚠️ 不区分 data，删除带词条装备时请用 [removeItemBySlot] 精确删除。
   bool removeItem(String itemId, int count) {
+    // 原子性：总数不足则直接拒绝，不修改任何状态
+    if (countItem(itemId) < count) return false;
+
     int remaining = count;
     for (final slot in slots) {
       if (slot == null || slot.itemId != itemId) continue;
@@ -103,7 +107,7 @@ class Inventory {
       remaining -= slot.count;
       slots[slot.slotIdx] = null;
     }
-    return remaining <= 0;
+    return true; // 走到这里说明一定扣完了
   }
 
   /// 按槽位精确删除（防误删极品装备）。
@@ -136,11 +140,12 @@ class Inventory {
     return inv;
   }
 
-  /// 返回添加物品后的新背包（不可变风格）
-  Inventory added(String itemId, int count, {String? data}) {
+  /// 返回添加物品后的新背包（不可变风格）。
+  /// [返回] (int 剩余未添加数量, Inventory 新背包)。left==0 表示全部成功。
+  (int, Inventory) added(String itemId, int count, {String? data}) {
     final inv = copy();
-    inv.addItem(itemId, count, data: data);
-    return inv;
+    final left = inv.addItem(itemId, count, data: data);
+    return (left, inv);
   }
 
   /// 返回移除物品后的新背包（不可变风格），(是否成功, 新背包)
