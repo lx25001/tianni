@@ -144,7 +144,11 @@ class _CreateCharacterPageState extends State<CreateCharacterPage> {
         await InventoryDao.saveAll(i, inv);
         if (mounted) {
           TianniToast.show(context, '道身已成');
-          Navigator.of(context).pushNamedAndRemoveUntil('/characters', (route) => false);
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/characters',
+            (route) => false,
+            arguments: {'reload': DateTime.now().millisecondsSinceEpoch},
+          );
         }
         return;
       }

@@ -17,16 +17,19 @@ class CharacterSelectPage extends StatefulWidget {
 
 class _CharacterSelectPageState extends State<CharacterSelectPage> {
   List<CharacterData?> _slots = List.filled(5, null);
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadSlots();
+    _loadSlots(force: true);
   }
 
-  Future<void> _loadSlots() async {
+  Future<void> _loadSlots({bool force = false}) async {
+    _loading = true;
+    if (mounted) setState(() {});
     final slots = await CharacterStorage.loadAll();
-    if (mounted) setState(() => _slots = slots);
+    if (mounted) setState(() { _slots = slots; _loading = false; });
   }
 
   void _confirmExit(BuildContext context) {

@@ -36,7 +36,7 @@ class TianniApp extends StatelessWidget {
             page = const AdvisoryPage();
             break;
           case '/characters':
-            page = const CharacterSelectPage();
+            page = CharacterSelectPage();
             break;
           case '/create-character':
             page = const CreateCharacterPage();
@@ -46,7 +46,7 @@ class TianniApp extends StatelessWidget {
             page = GamePage(slotIndex: slotIndex);
             break;
           default:
-            page = const CharacterSelectPage();
+            page = CharacterSelectPage();
         }
         return MaterialPageRoute(builder: (_) => page);
       },
