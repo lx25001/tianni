@@ -26,7 +26,7 @@ class DatabaseService {
     final dbPath = await getDatabasesPath();
     _db = await openDatabase(
       p.join(dbPath, 'tianni.db'),
-      version: 4,
+      version: 5,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -88,6 +88,18 @@ class DatabaseService {
         data     TEXT
       )
     ''');
+
+    // 装备槽（每人最多 4 件：weapon/armor/accessory/artifact）
+    await db.execute('''
+      CREATE TABLE equipment_slot (
+        slot        INTEGER NOT NULL,
+        equip_type  TEXT NOT NULL,
+        item_id     TEXT NOT NULL,
+        data        TEXT,
+        PRIMARY KEY (slot, equip_type),
+        FOREIGN KEY (slot) REFERENCES character_slot(slot) ON DELETE CASCADE
+      )
+    ''');
   }
 
   /// 版本迁移
@@ -108,6 +120,18 @@ class DatabaseService {
     }
     if (oldVersion < 4) {
       await db.execute("ALTER TABLE inventory_slot ADD COLUMN data TEXT");
+    }
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE equipment_slot (
+          slot        INTEGER NOT NULL,
+          equip_type  TEXT NOT NULL,
+          item_id     TEXT NOT NULL,
+          data        TEXT,
+          PRIMARY KEY (slot, equip_type),
+          FOREIGN KEY (slot) REFERENCES character_slot(slot) ON DELETE CASCADE
+        )
+      ''');
     }
   }
 

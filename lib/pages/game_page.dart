@@ -14,6 +14,10 @@ import '../services/character_storage.dart';
 import '../widgets/game_map_widget.dart';
 import '../providers/game_clock_provider.dart';
 import '../providers/inventory_provider.dart';
+import '../providers/equipment_provider.dart';
+import '../providers/combat_stats_provider.dart';
+import '../providers/character_provider.dart';
+import '../models/equipment.dart';
 import '../services/cultivation_engine.dart';
 
 /// 游戏主界面
@@ -37,6 +41,7 @@ class _GamePageState extends State<GamePage> {
     {'id': 'home', 'label': '主界', 'icon': '◈'},
     {'id': 'sect', 'label': '游历', 'icon': '游'},
     {'id': 'bag', 'label': '储物', 'icon': '囊'},
+    {'id': 'equip', 'label': '装备', 'icon': '铠'},
   ];
 
   static const List<Map<String, String>> _menuRow2 = [
@@ -208,6 +213,7 @@ class _GamePageState extends State<GamePage> {
                     const GameMapWidget(),
                     const _SectPanel(),
                     _BagPanel(slotIndex: widget.slotIndex),
+                    _EquipPanel(slotIndex: widget.slotIndex),
                     const _PlaceholderPanel(label: '宗门', desc: '宗门系统开发中'),
                     const _PlaceholderPanel(label: '功法', desc: '功法系统开发中'),
                     const _PlaceholderPanel(label: '社交', desc: '社交系统开发中'),
@@ -1307,9 +1313,27 @@ class _BagSlot extends ConsumerWidget {
   void _equipItem(BuildContext context, WidgetRef ref) {
     final tmpl = slot.template;
     if (tmpl == null) return;
-    ref.read(inventoryProvider(slotIndex)).removeItem(slot.itemId, 1);
-    Navigator.of(context).pop();
-    TianniToast.show(context, '装备了 ${slot.name}');
+    final equipType = tmpl.equipSlot;
+    if (equipType == null) {
+      TianniToast.show(context, '此物品不可装备');
+      return;
+    }
+    final eqType = switch (equipType) {
+      EquipSlot.weapon => 'weapon',
+      EquipSlot.armor => 'armor',
+      EquipSlot.accessory => 'accessory',
+      EquipSlot.artifact => 'artifact',
+    };
+    // 副本传给装备系统（slotIdx 精确定位，防止误删）
+    final copySlot = InventorySlot(itemId: slot.itemId, count: 1, slotIdx: slot.slotIdx, data: slot.data);
+    ref.read(equipmentProvider(slotIndex).notifier).equip(eqType, copySlot).then((ok) {
+      if (ok) {
+        Navigator.of(context).pop();
+        TianniToast.show(context, '装备了 ${slot.name}');
+      } else {
+        TianniToast.show(context, '装备失败');
+      }
+    });
   }
 
   Widget _infoRow(String label, String value) {
@@ -1344,6 +1368,99 @@ class _EmptySlot extends StatelessWidget {
       alignment: Alignment.center,
       child: const Text('＋', style: TextStyle(color: TianniColors.goldDark2, fontSize: 14, fontWeight: FontWeight.w100)),
     );
+  }
+}
+
+// ── 装备面板 ──
+class _EquipPanel extends ConsumerWidget {
+  final int slotIndex;
+  const _EquipPanel({required this.slotIndex});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final equips = ref.watch(equipmentProvider(slotIndex));
+    final charAsync = ref.watch(characterProvider(slotIndex));
+
+    return charAsync.when(
+      data: (char) => _buildBody(ref, equips, char),
+      loading: () => const Center(child: Text('加载中…', style: TextStyle(color: TianniColors.goldDim))),
+      error: (_, __) => const Center(child: Text('读取角色数据失败', style: TextStyle(color: TianniColors.crimson))),
+    );
+  }
+
+  Widget _buildBody(WidgetRef ref, Equipment equips, CharacterData? char) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(width: 4, height: 4, decoration: const BoxDecoration(color: TianniColors.gold, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          const Text('装 备', style: TextStyle(color: TianniColors.goldBright, fontSize: 14, letterSpacing: 4)),
+        ]),
+        const SizedBox(height: 10),
+        if (char != null) ...
+          _buildStats(ref, char),
+        const SizedBox(height: 14),
+        ...Equipment.defaultTypes.map((t) => _EquipSlotRow(equipType: t, label: Equipment.labels[t] ?? t, item: equips.slots[t], slotIndex: slotIndex)),
+      ]),
+    );
+  }
+
+  List<Widget> _buildStats(WidgetRef ref, CharacterData char) {
+    final c = ref.watch(combatStatsProvider((slot: slotIndex, char: char)));
+    return [Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(border: Border.all(color: TianniColors.inkLight)), child: Column(children: [
+      _s('生命', '${c.maxHp}', TianniColors.crimson),
+      _s('灵力', '${c.maxQi}', const Color(0xFF4A90D9)),
+      _s('攻击', '${c.attack}', Colors.amber),
+      _s('防御', '${c.defense}', TianniColors.gold),
+      _s('法抗', '${c.magicResist}', const Color(0xFF9B6FD4)),
+      _s('暴率', '${(c.critRate * 100).toStringAsFixed(1)}%', TianniColors.goldBright),
+    ]))];
+  }
+
+  Widget _s(String label, String value, Color color) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Row(children: [
+      SizedBox(width: 40, child: Text(label, style: const TextStyle(color: TianniColors.goldDark, fontSize: 11))),
+      Expanded(child: Text(value, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600))),
+    ]),
+  );
+}
+
+class _EquipSlotRow extends ConsumerWidget {
+  final String equipType, label;
+  final InventorySlot? item;
+  final int slotIndex;
+  const _EquipSlotRow({required this.equipType, required this.label, required this.item, required this.slotIndex});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final has = item != null;
+    return GestureDetector(
+      onTap: has ? () => _unequip(context, ref) : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(border: Border.all(color: has ? gradeColor(item!.grade) : TianniColors.inkLight), color: has ? const Color.fromRGBO(10, 7, 2, 0.8) : TianniColors.bgDark),
+        child: Row(children: [
+          SizedBox(width: 44, child: Text(label, style: TextStyle(color: TianniColors.goldDim, fontSize: 12, letterSpacing: 2))),
+          Expanded(child: Text(has ? item!.name : '—  空置', style: TextStyle(color: has ? gradeColor(item!.grade) : TianniColors.goldDark2, fontSize: 13))),
+          if (has) Text(gradeLabel(item!.grade), style: TextStyle(color: gradeColor(item!.grade).withValues(alpha: 0.7), fontSize: 9)),
+        ]),
+      ),
+    );
+  }
+
+  void _unequip(BuildContext context, WidgetRef ref) {
+    TianniDialog.show(context, title: item!.name, subtitle: gradeLabel(item!.grade), child: const Text('确定要卸下这件装备吗？', style: TextStyle(color: TianniColors.goldDim, fontSize: 12)), actions: [
+      DialogAction(text: '卸下', isPrimary: true, onTap: () {
+        Navigator.of(context).pop();
+        ref.read(equipmentProvider(slotIndex).notifier).unequip(equipType).then((ok) {
+          if (!ok) TianniToast.show(context, '储物袋已满，无法卸下');
+        });
+      }),
+      DialogAction(text: '取消', onTap: () => Navigator.of(context).pop()),
+    ]);
   }
 }
 
