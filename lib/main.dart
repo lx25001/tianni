@@ -9,6 +9,16 @@ import 'pages/character_select_page.dart';
 import 'pages/create_character_page.dart';
 import 'pages/game_page.dart';
 
+/// 零动画路由（防止页面跳转闪烁）
+PageRoute<T> _noAnimRoute<T>(Widget page, RouteSettings settings) {
+  return PageRouteBuilder<T>(
+    settings: settings,
+    pageBuilder: (_, __, ___) => page,
+    transitionDuration: Duration.zero,
+    reverseTransitionDuration: Duration.zero,
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GameClock.initEpoch();
@@ -30,25 +40,19 @@ class TianniApp extends StatelessWidget {
       ),
       initialRoute: '/',
       onGenerateRoute: (settings) {
-        Widget page;
         switch (settings.name) {
           case '/':
-            page = const AdvisoryPage();
-            break;
+            return _noAnimRoute(const AdvisoryPage(), settings);
           case '/characters':
-            page = CharacterSelectPage();
-            break;
+            return _noAnimRoute(CharacterSelectPage(), settings);
           case '/create-character':
-            page = const CreateCharacterPage();
-            break;
+            return _noAnimRoute(const CreateCharacterPage(), settings);
           case '/game':
             final slotIndex = settings.arguments as int? ?? 0;
-            page = GamePage(slotIndex: slotIndex);
-            break;
+            return _noAnimRoute(GamePage(slotIndex: slotIndex), settings);
           default:
-            page = CharacterSelectPage();
+            return _noAnimRoute(CharacterSelectPage(), settings);
         }
-        return MaterialPageRoute(builder: (_) => page);
       },
     );
   }
