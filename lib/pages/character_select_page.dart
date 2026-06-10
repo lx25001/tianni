@@ -285,10 +285,24 @@ class _CharCard extends StatelessWidget {
           text: '删除',
           isPrimary: false,
           onTap: () {
-            Navigator.of(context).pop(); // 关闭弹窗
-            CharacterStorage.delete(index).then((_) {
-              onDelete?.call();
-            });
+            Navigator.of(context).pop(); // 关闭详情弹窗
+            // 二次确认
+            TianniDialog.show(
+              context,
+              title: '确认删除',
+              subtitle: c.fullName,
+              child: const Text('此道身将烟消云散，且不可恢复。确定要舍弃吗？',
+                style: TextStyle(color: TianniColors.goldDim, fontSize: 12, letterSpacing: 1)),
+              actions: [
+                DialogAction(text: '取消', onTap: () => Navigator.of(context).pop()),
+                DialogAction(text: '确定删除', isPrimary: false, onTap: () {
+                  Navigator.of(context).pop(); // 关闭确认弹窗
+                  CharacterStorage.delete(index).then((_) {
+                    onDelete?.call();
+                  });
+                }),
+              ],
+            );
           },
         ),
         DialogAction(

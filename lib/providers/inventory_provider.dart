@@ -15,20 +15,21 @@ class InventoryNotifier extends StateNotifier<Inventory> {
   }
 
   Future<void> addItem(String itemId, int count) async {
-    state.addItem(itemId, count);
-    await _save();
+    // 先复制一份再操作，触发 UI 刷新，后台持久化
+    final copy = Inventory.fromSlotList(state.toList(), capacity: state.capacity);
+    copy.addItem(itemId, count);
+    state = copy;
+    await InventoryDao.saveAll(slot, state);
   }
 
   Future<bool> removeItem(String itemId, int count) async {
-    final ok = state.removeItem(itemId, count);
-    if (ok) await _save();
+    final copy = Inventory.fromSlotList(state.toList(), capacity: state.capacity);
+    final ok = copy.removeItem(itemId, count);
+    if (ok) {
+      state = copy;
+      await InventoryDao.saveAll(slot, state);
+    }
     return ok;
-  }
-
-  Future<void> _save() async {
-    await InventoryDao.saveAll(slot, state);
-    // 强制通知监听器（对象引用未变时也刷新）
-    state = Inventory.fromSlotList(state.toList(), capacity: state.capacity);
   }
 
   void refresh() {
