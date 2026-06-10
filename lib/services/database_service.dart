@@ -26,7 +26,7 @@ class DatabaseService {
     final dbPath = await getDatabasesPath();
     _db = await openDatabase(
       p.join(dbPath, 'tianni.db'),
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -52,6 +52,7 @@ class DatabaseService {
         layer      INTEGER NOT NULL DEFAULT 1,
         xp_percent INTEGER NOT NULL DEFAULT 0,
         spirit_stones INTEGER NOT NULL DEFAULT 0,
+        last_save_ts INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -93,6 +94,9 @@ class DatabaseService {
           slot_idx INTEGER NOT NULL
         )
       ''');
+    }
+    if (oldVersion < 3) {
+      await db.execute("ALTER TABLE character_slot ADD COLUMN last_save_ts INTEGER NOT NULL DEFAULT 0");
     }
   }
 

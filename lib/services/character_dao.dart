@@ -9,17 +9,19 @@ class CharacterDao {
   static const _table = 'character_slot';
 
   /// 保存角色（INSERT OR REPLACE）
-  static Future<void> save(int slot, CharacterData data) async {
+  static Future<void> save(int slot, CharacterData data, {bool stampTs = true}) async {
     final db = await DatabaseService.db;
     final now = DateTime.now().toIso8601String();
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
     final existing = await db.query(_table, where: 'slot = ?', whereArgs: [slot]);
     final createdAt = existing.isNotEmpty
         ? (existing.first['created_at'] as String?) ?? now
         : now;
+    final d = stampTs ? data.copyWith(lastSaveTs: nowMs) : data;
 
     await db.insert(
       _table,
-      _toRow(slot, data, createdAt, now),
+      _toRow(slot, d, createdAt, now),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
@@ -73,6 +75,7 @@ class CharacterDao {
       'layer': d.layer,
       'xp_percent': d.xpPercent,
       'spirit_stones': d.spiritStones,
+      'last_save_ts': d.lastSaveTs,
       'created_at': createdAt,
       'updated_at': updatedAt,
     };
@@ -95,6 +98,7 @@ class CharacterDao {
       layer: row['layer'] as int? ?? 1,
       xpPercent: row['xp_percent'] as int? ?? 0,
       spiritStones: row['spirit_stones'] as int? ?? 5,
+      lastSaveTs: row['last_save_ts'] as int? ?? 0,
     );
   }
 }

@@ -184,4 +184,82 @@ class CultivationEngine {
 
     return (xp, breakthrough, layers);
   }
+
+  /// 离线修炼补算。
+  /// 返回 [新角色数据, 离线秒数, 突破层数, 突破大境界数]
+  static (CharacterData, int, int, int) applyOffline({
+    required CharacterData character,
+    required int offlineSeconds,
+    bool inCaveTrainingRoom = false,
+  }) {
+    if (offlineSeconds <= 0) return (character, 0, 0, 0);
+
+    final rate = xpPerSecond(
+      realmIndex: character.realmIndex,
+      character: character,
+      isOnline: false,
+      inCaveTrainingRoom: inCaveTrainingRoom,
+    );
+
+    final xpGained = rate * offlineSeconds;
+    int layers = 0;
+    int realmBreaks = 0;
+    int currentRealm = character.realmIndex;
+    final currentRequired = xpRequired(currentRealm);
+    double totalXp = character.xpPercent / 100.0 * currentRequired + xpGained;
+
+    while (true) {
+      final required = xpRequired(currentRealm + layers).toDouble();
+      if (totalXp < required) break;
+      totalXp -= required;
+      layers++;
+    }
+
+    // 大境界突破
+    int newLayer = character.layer + layers;
+    int newRealm = character.realmIndex;
+    while (newLayer > 9) {
+      newRealm++;
+      newLayer -= 9;
+      realmBreaks++;
+    }
+
+    final finalRequired = xpRequired(newRealm).toDouble();
+    final xp = ((totalXp / finalRequired) * 100.0).clamp(0, 100).round();
+
+    // 属性增长（同在线逻辑）
+    final rng = DateTime.now().microsecondsSinceEpoch;
+    int conGain = 0, spiGain = 0, qiGain = 0;
+    for (int i = 0; i < layers; i++) {
+      conGain += 1 + ((rng + i * 3) % 3);
+      spiGain += 1 + ((rng + i * 3 + 1) % 3);
+      qiGain += 1 + ((rng + i * 3 + 2) % 3);
+    }
+    for (int i = 0; i < realmBreaks; i++) {
+      conGain += 10 + ((rng + i * 7) % 21);
+      spiGain += 10 + ((rng + i * 7 + 1) % 21);
+      qiGain += 10 + ((rng + i * 7 + 2) % 21);
+    }
+
+    final updated = CharacterData(
+      surname: character.surname,
+      givenName: character.givenName,
+      rootElement: character.rootElement,
+      rootPurity: character.rootPurity,
+      purityRate: character.purityRate,
+      con: character.con + conGain,
+      spi: character.spi + spiGain,
+      qi: character.qi + qiGain,
+      dao: character.dao,
+      ins: character.ins,
+      bon: character.bon,
+      realmIndex: newRealm,
+      layer: newLayer,
+      xpPercent: xp,
+      spiritStones: character.spiritStones,
+      lastSaveTs: character.lastSaveTs,
+    );
+
+    return (updated, offlineSeconds, layers, realmBreaks);
+  }
 }

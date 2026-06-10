@@ -18,6 +18,9 @@ class CharacterData {
   // 货币
   final int spiritStones;
 
+  // 离线
+  final int lastSaveTs; // 毫秒时间戳
+
   CharacterData({
     required this.surname,
     required this.givenName,
@@ -34,6 +37,7 @@ class CharacterData {
     this.layer = 1,
     this.xpPercent = 0,
     this.spiritStones = 5,
+    this.lastSaveTs = 0,
   }) : fullName = '$surname$givenName';
 
   factory CharacterData.fromJson(Map<String, dynamic> json) {
@@ -53,6 +57,7 @@ class CharacterData {
       layer: json['layer'] as int? ?? 1,
       xpPercent: json['xpPercent'] as int? ?? 0,
       spiritStones: json['spiritStones'] as int? ?? 5,
+      lastSaveTs: json['lastSaveTs'] as int? ?? 0,
     );
   }
 
@@ -68,6 +73,7 @@ class CharacterData {
     'layer': layer,
     'xpPercent': xpPercent,
     'spiritStones': spiritStones,
+    'lastSaveTs': lastSaveTs,
   };
 
   static const List<String> realms = [
@@ -80,4 +86,31 @@ class CharacterData {
   String get realmName => realms[realmIndex];
 
   static const int maxLayers = 9;
+
+  CharacterData copyWith({
+    String? surname, String? givenName,
+    String? rootElement, String? rootPurity, double? purityRate,
+    int? con, int? spi, int? qi, int? dao, int? ins, int? bon,
+    int? realmIndex, int? layer, int? xpPercent,
+    int? spiritStones, int? lastSaveTs,
+  }) {
+    return CharacterData(
+      surname: surname ?? this.surname,
+      givenName: givenName ?? this.givenName,
+      rootElement: rootElement ?? this.rootElement,
+      rootPurity: rootPurity ?? this.rootPurity,
+      purityRate: purityRate ?? this.purityRate,
+      con: con ?? this.con,
+      spi: spi ?? this.spi,
+      qi: qi ?? this.qi,
+      dao: dao ?? this.dao,
+      ins: ins ?? this.ins,
+      bon: bon ?? this.bon,
+      realmIndex: realmIndex ?? this.realmIndex,
+      layer: layer ?? this.layer,
+      xpPercent: xpPercent ?? this.xpPercent,
+      spiritStones: spiritStones ?? this.spiritStones,
+      lastSaveTs: lastSaveTs ?? this.lastSaveTs,
+    );
+  }
 }

@@ -54,9 +54,43 @@ class _GamePageState extends State<GamePage> {
   }
 
   Future<void> _loadCharacter() async {
-    final char = await CharacterStorage.load(widget.slotIndex);
+    var char = await CharacterStorage.load(widget.slotIndex);
+    if (char == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    // 离线补算
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final offlineSec = char.lastSaveTs > 0 ? ((now - char.lastSaveTs) / 1000).floor() : 0;
+    if (offlineSec > 0) {
+      final (updated, sec, layers, realmBreaks) = CultivationEngine.applyOffline(
+        character: char,
+        offlineSeconds: offlineSec,
+      );
+      char = updated.copyWith(lastSaveTs: now);
+      _offlineSummary = '离线 ${_fmtDuration(offlineSec)}，突破 $layers 层';
+      if (realmBreaks > 0) _offlineSummary = _offlineSummary! + '，晋升 $realmBreaks 大境界';
+    }
     if (mounted) setState(() { _char = char; _loading = false; });
+    // 显示离线收益
+    if (offlineSec > 0 && _offlineSummary != null && mounted) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          TianniToast.show(context, '${_offlineSummary!.replaceAll('，', '\n')}');
+        }
+      });
+    }
   }
+
+  String _fmtDuration(int seconds) {
+    if (seconds < 60) return '$seconds 秒';
+    final m = seconds ~/ 60;
+    if (m < 60) return '$m 分${seconds % 60}秒';
+    final h = m ~/ 60;
+    return '$h 时${m % 60}分';
+  }
+
+  String? _offlineSummary;
 
   void _onCharChanged(CharacterData updated) {
     setState(() => _char = updated);
