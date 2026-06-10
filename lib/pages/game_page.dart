@@ -6,6 +6,7 @@ import '../widgets/ancient_border.dart';
 import '../widgets/ink_divider.dart';
 import '../widgets/ancient_button.dart';
 import '../widgets/tianni_dialog.dart';
+import '../widgets/tianni_feedback.dart';
 import '../models/character_data.dart';
 import '../models/item_data.dart';
 import '../models/inventory.dart';
@@ -1096,7 +1097,7 @@ class _BagPanelState extends ConsumerState<_BagPanel> {
             ),
             itemCount: inv.capacity,
             itemBuilder: (context, index) {
-              if (index < items.length) return _BagSlot(slot: items[index]);
+              if (index < items.length) return _BagSlot(slot: items[index], slotIndex: widget.slotIndex);
               if (index < inv.capacity) return const _EmptySlot();
               return const SizedBox.shrink();
             },
@@ -1108,17 +1109,27 @@ class _BagPanelState extends ConsumerState<_BagPanel> {
   }
 }
 
-class _BagSlot extends StatelessWidget {
+class _BagSlot extends ConsumerWidget {
   final InventorySlot slot;
-  const _BagSlot({required this.slot});
+  final int slotIndex;
+  const _BagSlot({required this.slot, this.slotIndex = 0});
 
   String get _countText => slot.count > 99 ? '99+' : '${slot.count}';
 
+  String catLabel(ItemCategory cat) => switch (cat) {
+        ItemCategory.pill => '丹药',
+        ItemCategory.mat => '材料',
+        ItemCategory.equip => '装备',
+        ItemCategory.talisman => '符箓',
+        ItemCategory.skill => '功法',
+        ItemCategory.junk => '杂物',
+      };
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final gColor = gradeColor(slot.grade);
     return GestureDetector(
-      onTap: () => _showDetail(context, gColor),
+      onTap: () => _showDetail(context, ref),
       child: Container(
         decoration: BoxDecoration(
           border: Border.all(color: gColor.withValues(alpha: 0.55)),
@@ -1158,35 +1169,90 @@ class _BagSlot extends StatelessWidget {
     );
   }
 
-  String catLabel(ItemCategory cat) => switch (cat) {
-        ItemCategory.pill => '丹药',
-        ItemCategory.mat => '材料',
-        ItemCategory.equip => '装备',
-        ItemCategory.talisman => '符箓',
-        ItemCategory.skill => '功法',
-        ItemCategory.junk => '杂物',
-      };
+  void _showDetail(BuildContext context, WidgetRef ref) {
+    final tmpl = slot.template;
+    final desc = tmpl?.desc ?? '';
+    final effectsText = tmpl?.effects?.map((e) => e.desc ?? '${e.type} +${e.value}').join('\n') ?? '';
+    final statsText = tmpl?.baseStats?.entries.map((e) => '${e.key}: +${e.value}').join(' · ') ?? '';
 
-  void _showDetail(BuildContext context, Color gradeColor) {
     TianniDialog.show(
       context,
       title: slot.name,
-      subtitle: '${gradeLabel(slot.grade)} · ${catLabel(slot.cat)}',
+      subtitle: '${gradeLabel(slot.grade)} · ${catLabel(slot.cat)} · 数量 ${slot.count}',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _infoRow('品名', slot.name),
-          _infoRow('品阶', gradeLabel(slot.grade)),
-          _infoRow('分类', catLabel(slot.cat)),
-          _infoRow('数量', '${slot.count}'),
+          if (desc.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(desc, style: const TextStyle(color: TianniColors.goldDim, fontSize: 11, letterSpacing: 1)),
+            ),
+          if (statsText.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(statsText, style: const TextStyle(color: TianniColors.gold, fontSize: 11)),
+            ),
+          if (effectsText.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(effectsText, style: const TextStyle(color: TianniColors.goldDark, fontSize: 10)),
+            ),
+          if (tmpl?.realmRequired != null)
+            Text('需求: ${CharacterData.realms[tmpl!.realmRequired ?? 0]}',
+              style: const TextStyle(color: TianniColors.crimson, fontSize: 10)),
         ],
       ),
       actions: [
-        DialogAction(text: '使用', isPrimary: true, onTap: () {}),
-        DialogAction(text: '丢弃', isPrimary: false, onTap: () => Navigator.of(context).pop()),
+        DialogAction(
+          text: slot.cat == ItemCategory.pill ? '服用' : 
+                slot.cat == ItemCategory.equip ? '装备' :
+                slot.cat == ItemCategory.skill ? '学习' :
+                '使用',
+          isPrimary: true,
+          onTap: () {
+            if (slot.cat == ItemCategory.pill) {
+              _usePill(context, ref);
+            } else if (slot.cat == ItemCategory.equip) {
+              _equipItem(context, ref);
+            } else {
+              ref.read(inventoryProvider(slotIndex)).removeItem(slot.itemId, 1);
+              Navigator.of(context).pop();
+              TianniToast.show(context, '使用了 1 个 ${slot.name}');
+            }
+          },
+        ),
+        DialogAction(
+          text: '丢弃',
+          isPrimary: false,
+          onTap: () {
+            ref.read(inventoryProvider(slotIndex)).removeItem(slot.itemId, slot.count);
+            Navigator.of(context).pop();
+            TianniToast.show(context, '丢弃了 ${slot.name} ×${slot.count}');
+          },
+        ),
       ],
     );
+  }
+
+  void _usePill(BuildContext context, WidgetRef ref) {
+    final tmpl = slot.template;
+    if (tmpl == null) return;
+    final boost = tmpl.effects?.where((e) => e.type == 'cultivateBoost').firstOrNull;
+    if (boost != null) {
+      // 修炼加速 buff 后续由修炼系统读取
+    }
+    ref.read(inventoryProvider(slotIndex)).removeItem(slot.itemId, 1);
+    Navigator.of(context).pop();
+    TianniToast.show(context, '服用了 ${slot.name}');
+  }
+
+  void _equipItem(BuildContext context, WidgetRef ref) {
+    final tmpl = slot.template;
+    if (tmpl == null) return;
+    ref.read(inventoryProvider(slotIndex)).removeItem(slot.itemId, 1);
+    Navigator.of(context).pop();
+    TianniToast.show(context, '装备了 ${slot.name}');
   }
 
   Widget _infoRow(String label, String value) {
