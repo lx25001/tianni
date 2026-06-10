@@ -143,6 +143,7 @@ class _CreateCharacterPageState extends State<CreateCharacterPage> {
         inv.addItem('equip_robe_01', 1);   // 粗布道袍×1
         await InventoryDao.saveAll(i, inv);
         if (mounted) {
+          TianniToast.show(context, '道身已成');
           Navigator.of(context).pushNamedAndRemoveUntil('/characters', (route) => false);
         }
         return;
