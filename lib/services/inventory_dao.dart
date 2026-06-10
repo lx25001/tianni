@@ -18,6 +18,7 @@ class InventoryDao {
           'item_id': s.itemId,
           'count': s.count,
           'slot_idx': s.slotIdx,
+          'data': s.data,
         });
       }
     });
@@ -30,6 +31,7 @@ class InventoryDao {
           itemId: row['item_id'] as String,
           count: row['count'] as int? ?? 1,
           slotIdx: row['slot_idx'] as int? ?? 0,
+          data: row['data'] as String?,
         )).toList();
     return Inventory.fromSlotList(slotList, capacity: capacity);
   }

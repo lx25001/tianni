@@ -26,7 +26,10 @@ class DatabaseService {
     final dbPath = await getDatabasesPath();
     _db = await openDatabase(
       p.join(dbPath, 'tianni.db'),
-      version: 3,
+      version: 4,
+      onConfigure: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -77,7 +80,8 @@ class DatabaseService {
         slot     INTEGER NOT NULL,
         item_id  TEXT NOT NULL,
         count    INTEGER NOT NULL DEFAULT 1,
-        slot_idx INTEGER NOT NULL
+        slot_idx INTEGER NOT NULL,
+        data     TEXT
       )
     ''');
   }
@@ -97,6 +101,9 @@ class DatabaseService {
     }
     if (oldVersion < 3) {
       await db.execute("ALTER TABLE character_slot ADD COLUMN last_save_ts INTEGER NOT NULL DEFAULT 0");
+    }
+    if (oldVersion < 4) {
+      await db.execute("ALTER TABLE inventory_slot ADD COLUMN data TEXT");
     }
   }
 

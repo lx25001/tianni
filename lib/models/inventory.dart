@@ -6,8 +6,9 @@ class InventorySlot {
   final String itemId;
   int count;
   int slotIdx;
+  String? data; // JSON: 装备词条/耐久/绑定等动态属性
 
-  InventorySlot({required this.itemId, this.count = 1, this.slotIdx = 0});
+  InventorySlot({required this.itemId, this.count = 1, this.slotIdx = 0, this.data});
 
   ItemTemplate? get template => ItemRegistry.get(itemId);
   String get name => template?.name ?? '未知物品';
@@ -17,11 +18,12 @@ class InventorySlot {
   int get stackMax => template?.stackMax ?? 999;
   int get value => (template?.value ?? 1) * count;
 
-  Map<String, dynamic> toJson() => {'itemId': itemId, 'count': count, 'slotIdx': slotIdx};
+  Map<String, dynamic> toJson() => {'itemId': itemId, 'count': count, 'slotIdx': slotIdx, if (data != null) 'data': data};
   factory InventorySlot.fromJson(Map<String, dynamic> j) => InventorySlot(
         itemId: j['itemId'] as String,
         count: j['count'] as int? ?? 1,
         slotIdx: j['slotIdx'] as int? ?? 0,
+        data: j['data'] as String?,
       );
 }
 
@@ -115,7 +117,7 @@ class Inventory {
     final inv = Inventory(capacity: capacity);
     for (final s in slots) {
       if (s == null) continue;
-      inv.slots[s.slotIdx] = InventorySlot(itemId: s.itemId, count: s.count, slotIdx: s.slotIdx);
+      inv.slots[s.slotIdx] = InventorySlot(itemId: s.itemId, count: s.count, slotIdx: s.slotIdx, data: s.data);
     }
     return inv;
   }
