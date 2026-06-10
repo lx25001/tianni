@@ -25,6 +25,7 @@ flutter:
   assets:
     - assets/fonts/
     - assets/data/items.json
+    - assets/data/starter_items.json
   fonts:
     - family: MaShanZheng
       fonts:

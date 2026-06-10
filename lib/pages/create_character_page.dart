@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import '../theme/colors.dart';
 import '../widgets/ink_divider.dart';
 import '../widgets/ancient_input.dart';
@@ -136,11 +138,13 @@ class _CreateCharacterPageState extends State<CreateCharacterPage> {
       final existing = await CharacterStorage.load(i);
       if (existing == null) {
         await CharacterStorage.save(i, data);
-        // 赠送初始物品
+        // 从配置文件赠送初始物品
         final inv = Inventory();
-        inv.addItem('pill_qi_01', 3);     // 聚气丹×3
-        inv.addItem('equip_sword_01', 1);  // 铁剑×1
-        inv.addItem('equip_robe_01', 1);   // 粗布道袍×1
+        final starterJson = await rootBundle.loadString('assets/data/starter_items.json');
+        final starterList = jsonDecode(starterJson) as List;
+        for (final entry in starterList) {
+          inv.addItem(entry['itemId'] as String, entry['count'] as int);
+        }
         await InventoryDao.saveAll(i, inv);
         if (mounted) {
           TianniToast.show(context, '道身已成');

@@ -1,0 +1,7 @@
+[
+  {"itemId": "pill_qi_01",       "count": 3,  "reason": "新手修炼基础丹药"},
+  {"itemId": "equip_sword_01",   "count": 1,  "reason": "凡铁锻造的基础武器"},
+  {"itemId": "equip_robe_01",    "count": 1,  "reason": "麻布缝制的基础道袍"},
+  {"itemId": "pill_heal_01",     "count": 2,  "reason": "山林间常见的疗伤丹药"},
+  {"itemId": "mat_herb_01",      "count": 5,  "reason": "山野采集的天灵草"}
+]
