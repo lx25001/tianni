@@ -26,7 +26,7 @@ class DatabaseService {
     final dbPath = await getDatabasesPath();
     _db = await openDatabase(
       p.join(dbPath, 'tianni.db'),
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -83,7 +83,17 @@ class DatabaseService {
 
   /// 版本迁移
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // 当前 v1，暂无迁移逻辑。后续版本在此追加。
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE inventory_slot (
+          id       INTEGER PRIMARY KEY AUTOINCREMENT,
+          slot     INTEGER NOT NULL,
+          item_id  TEXT NOT NULL,
+          count    INTEGER NOT NULL DEFAULT 1,
+          slot_idx INTEGER NOT NULL
+        )
+      ''');
+    }
   }
 
   /// 关闭数据库（应用退出时调用）
