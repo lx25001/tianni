@@ -1,12 +1,14 @@
 import '../models/item_data.dart';
 import '../services/item_registry.dart';
 
-/// 背包槽位
+/// 背包槽位。
+/// ⚠️ `data` 字段为 JSON 字符串，存放装备独立词条/耐久/绑定状态/法宝灵性等。
+/// 同 itemId 的两把剑通过 data 区分（新品 vs 百战之刃）。
 class InventorySlot {
   final String itemId;
   int count;
   int slotIdx;
-  String? data; // JSON: 装备词条/耐久/绑定等动态属性
+  String? data; // JSON: {"affixes":[...],"durability":87,"bindType":"soul","kills":1000}
 
   InventorySlot({required this.itemId, this.count = 1, this.slotIdx = 0, this.data});
 

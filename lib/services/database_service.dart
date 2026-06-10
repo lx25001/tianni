@@ -35,6 +35,10 @@ class DatabaseService {
     );
   }
 
+  // ⚠️ 外键已开启：onConfigure 中注册了 PRAGMA foreign_keys = ON
+  // ⚠️ 动态属性已支持：inventory_slot 有 data TEXT 字段存放词条/耐久 JSON
+  // ⚠️ 版本号：4（v1→角色表, v2→背包表, v3→last_save_ts, v4→data字段+外键PRAGMA）
+
   /// 建表
   static Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
