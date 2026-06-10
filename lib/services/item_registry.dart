@@ -12,8 +12,19 @@ class ItemRegistry {
     if (_init) return;
     final raw = await rootBundle.loadString('assets/data/items.json');
     final list = jsonDecode(raw) as List;
+    final ids = <String>{};
     for (final e in list) {
       final tmpl = ItemTemplate.fromJson(e as Map<String, dynamic>);
+      // 校验重复ID
+      if (ids.contains(tmpl.id)) {
+        throw Exception('物品ID重复: ${tmpl.id}');
+      }
+      ids.add(tmpl.id);
+      // 校验境界需求范围
+      if (tmpl.realmRequired != null &&
+          (tmpl.realmRequired! < 0 || tmpl.realmRequired! > 23)) {
+        throw Exception('${tmpl.id}: realmRequired 越界 (0-23)');
+      }
       _items[tmpl.id] = tmpl;
     }
     _init = true;
