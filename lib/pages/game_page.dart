@@ -103,7 +103,7 @@ class _GamePageState extends State<GamePage> {
                           style: TextStyle(color: realmColor, fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                         const Spacer(),
-                        Text('灵石 12,480',
+                        Text('灵石 ${_char?.spiritStones ?? 0}',
                           style: const TextStyle(color: TianniColors.gold, fontSize: 10),
                         ),
                       ],
@@ -466,6 +466,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
         dao: c.dao, ins: c.ins, bon: c.bon,
         realmIndex: c.realmIndex, layer: c.layer,
         xpPercent: newPercent.round(),
+        spiritStones: c.spiritStones,
       );
       setState(() {});
       widget.onCharacterChanged?.call(_char!);
@@ -506,6 +507,7 @@ class _CultivatePanelState extends ConsumerState<_CultivatePanel> {
       dao: c.dao, ins: c.ins, bon: c.bon,
       realmIndex: newRealm, layer: newLayer,
       xpPercent: newPercent.round(),
+      spiritStones: c.spiritStones,
     );
 
     setState(() {

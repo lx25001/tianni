@@ -15,6 +15,9 @@ class CharacterData {
   final int layer;      // 1-based, 1-9
   final int xpPercent;  // 0-100
 
+  // 货币
+  final int spiritStones;
+
   CharacterData({
     required this.surname,
     required this.givenName,
@@ -30,6 +33,7 @@ class CharacterData {
     this.realmIndex = 0,
     this.layer = 1,
     this.xpPercent = 0,
+    this.spiritStones = 5,
   }) : fullName = '$surname$givenName';
 
   factory CharacterData.fromJson(Map<String, dynamic> json) {
@@ -48,6 +52,7 @@ class CharacterData {
       realmIndex: json['realmIndex'] as int? ?? 0,
       layer: json['layer'] as int? ?? 1,
       xpPercent: json['xpPercent'] as int? ?? 0,
+      spiritStones: json['spiritStones'] as int? ?? 5,
     );
   }
 
@@ -62,6 +67,7 @@ class CharacterData {
     'realmIndex': realmIndex,
     'layer': layer,
     'xpPercent': xpPercent,
+    'spiritStones': spiritStones,
   };
 
   static const List<String> realms = [

@@ -72,7 +72,7 @@ class CharacterDao {
       'realm_index': d.realmIndex,
       'layer': d.layer,
       'xp_percent': d.xpPercent,
-      'spirit_stones': 0,
+      'spirit_stones': d.spiritStones,
       'created_at': createdAt,
       'updated_at': updatedAt,
     };
@@ -94,6 +94,7 @@ class CharacterDao {
       realmIndex: row['realm_index'] as int? ?? 0,
       layer: row['layer'] as int? ?? 1,
       xpPercent: row['xp_percent'] as int? ?? 0,
+      spiritStones: row['spirit_stones'] as int? ?? 5,
     );
   }
 }
