@@ -68,6 +68,17 @@ class DatabaseService {
         FOREIGN KEY (slot) REFERENCES character_slot(slot) ON DELETE CASCADE
       )
     ''');
+
+    // 背包槽
+    await db.execute('''
+      CREATE TABLE inventory_slot (
+        id       INTEGER PRIMARY KEY AUTOINCREMENT,
+        slot     INTEGER NOT NULL,
+        item_id  TEXT NOT NULL,
+        count    INTEGER NOT NULL DEFAULT 1,
+        slot_idx INTEGER NOT NULL
+      )
+    ''');
   }
 
   /// 版本迁移

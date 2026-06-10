@@ -7,9 +7,12 @@ import '../widgets/ink_divider.dart';
 import '../widgets/ancient_button.dart';
 import '../widgets/tianni_dialog.dart';
 import '../models/character_data.dart';
+import '../models/item_data.dart';
+import '../models/inventory.dart';
 import '../services/character_storage.dart';
 import '../widgets/game_map_widget.dart';
 import '../providers/game_clock_provider.dart';
+import '../providers/inventory_provider.dart';
 import '../services/cultivation_engine.dart';
 
 /// 游戏主界面
@@ -169,7 +172,7 @@ class _GamePageState extends State<GamePage> {
                     const _BattlePanel(),
                     const GameMapWidget(),
                     const _SectPanel(),
-                    const _BagPanel(),
+                    _BagPanel(slotIndex: widget.slotIndex),
                     const _PlaceholderPanel(label: '宗门', desc: '宗门系统开发中'),
                     const _PlaceholderPanel(label: '功法', desc: '功法系统开发中'),
                     const _PlaceholderPanel(label: '社交', desc: '社交系统开发中'),
@@ -938,53 +941,34 @@ class _SectStat extends StatelessWidget {
 // ============================================================
 // 储物面板
 // ============================================================
-class _BagPanel extends StatefulWidget {
-  const _BagPanel();
+class _BagPanel extends ConsumerStatefulWidget {
+  final int slotIndex;
+  const _BagPanel({this.slotIndex = 0});
 
   @override
-  State<_BagPanel> createState() => _BagPanelState();
+  ConsumerState<_BagPanel> createState() => _BagPanelState();
 }
 
-class _BagPanelState extends State<_BagPanel> {
+class _BagPanelState extends ConsumerState<_BagPanel> {
   static const _cols = 5;
-  static const _totalSlots = 50;
   String _activeTab = '全部';
   String _query = '';
   final _searchCtrl = TextEditingController();
 
   static const _tabs = ['全部', '丹药', '材料', '装备', '符箓'];
 
-  /// 品阶色 (8 阶)
-  static const Map<String, Color> _gradeColors = {
-    '凡': Color(0xFF8B8378),
-    '良': Color(0xFF5B9A3F),
-    '灵': Color(0xFF4A90D9),
-    '宝': Color(0xFF9B6FD4),
-    '珍': Color(0xFFFF8C00),
-    '仙': Color(0xFFFFD700),
-    '圣': Color(0xFFFF5555),
-    '道': Color(0xFF00FFFF),
-  };
+  List<InventorySlot> get _allItems {
+    final inv = ref.watch(inventoryProvider(widget.slotIndex));
+    return inv.toList();
+  }
 
-  static final _allItems = [
-    _BagSlotData(name: '天灵草', count: 156, grade: '凡', cat: '材料'),
-    _BagSlotData(name: '玄铁矿', count: 8, grade: '凡', cat: '材料'),
-    _BagSlotData(name: '筑基丹', count: 3, grade: '灵', cat: '丹药'),
-    _BagSlotData(name: '破邪符', count: 12, grade: '良', cat: '符箓'),
-    _BagSlotData(name: '寒铁剑', count: 1, grade: '宝', cat: '装备'),
-    _BagSlotData(name: '玉液', count: 5, grade: '灵', cat: '丹药'),
-    _BagSlotData(name: '火灵石', count: 120, grade: '良', cat: '材料'),
-    _BagSlotData(name: '兽骨', count: 6, grade: '凡', cat: '材料'),
-    _BagSlotData(name: '雾隐草', count: 99, grade: '良', cat: '材料'),
-    _BagSlotData(name: '聚气丹', count: 7, grade: '灵', cat: '丹药'),
-    _BagSlotData(name: '铁甲衣', count: 1, grade: '良', cat: '装备'),
-    _BagSlotData(name: '烈火符', count: 200, grade: '灵', cat: '符箓'),
-  ];
-
-  List<_BagSlotData> get _filtered {
+  List<InventorySlot> get _filtered {
     var list = _allItems;
-    if (_activeTab != '全部') list = list.where((i) => i.cat == _activeTab).toList();
-    if (_query.isNotEmpty) list = list.where((i) => i.name.contains(_query)).toList();
+    if (_activeTab == '丹药') list = list.where((s) => s.cat == ItemCategory.pill).toList();
+    if (_activeTab == '材料') list = list.where((s) => s.cat == ItemCategory.mat).toList();
+    if (_activeTab == '装备') list = list.where((s) => s.cat == ItemCategory.equip).toList();
+    if (_activeTab == '符箓') list = list.where((s) => s.cat == ItemCategory.talisman).toList();
+    if (_query.isNotEmpty) list = list.where((s) => s.name.contains(_query)).toList();
     return list;
   }
 
@@ -996,8 +980,9 @@ class _BagPanelState extends State<_BagPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final inv = ref.watch(inventoryProvider(widget.slotIndex));
     final items = _filtered;
-    final usedSlots = _allItems.length;
+    final usedSlots = inv.usedSlots;
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -1013,7 +998,7 @@ class _BagPanelState extends State<_BagPanel> {
               const SizedBox(width: 6),
               const Text('储 物', style: TextStyle(color: TianniColors.goldBright, fontSize: 14, letterSpacing: 4)),
               const Spacer(),
-              Text('$usedSlots / $_totalSlots',
+              Text('$usedSlots / ${inv.capacity}',
                 style: const TextStyle(color: TianniColors.gold, fontSize: 11)),
               const SizedBox(width: 4),
               const Text('格', style: TextStyle(color: TianniColors.goldDark2, fontSize: 9)),
@@ -1109,10 +1094,10 @@ class _BagPanelState extends State<_BagPanel> {
               crossAxisSpacing: 6,
               childAspectRatio: 1.05,
             ),
-            itemCount: _totalSlots,
+            itemCount: inv.capacity,
             itemBuilder: (context, index) {
-              if (index < items.length) return _BagSlot(item: items[index]);
-              if (index < _totalSlots) return const _EmptySlot();
+              if (index < items.length) return _BagSlot(slot: items[index]);
+              if (index < inv.capacity) return const _EmptySlot();
               return const SizedBox.shrink();
             },
           ),
@@ -1123,33 +1108,20 @@ class _BagPanelState extends State<_BagPanel> {
   }
 }
 
-class _BagSlotData {
-  final String name;
-  final int count;
-  final String grade;
-  final String cat;
-  const _BagSlotData({
-    required this.name,
-    required this.count,
-    required this.grade,
-    this.cat = '材料',
-  });
-}
-
 class _BagSlot extends StatelessWidget {
-  final _BagSlotData item;
-  const _BagSlot({required this.item});
+  final InventorySlot slot;
+  const _BagSlot({required this.slot});
 
-  String get _countText => item.count > 99 ? '99+' : '${item.count}';
+  String get _countText => slot.count > 99 ? '99+' : '${slot.count}';
 
   @override
   Widget build(BuildContext context) {
-    final gradeColor = _BagPanelState._gradeColors[item.grade] ?? TianniColors.goldDark2;
+    final gColor = gradeColor(slot.grade);
     return GestureDetector(
-      onTap: () => _showDetail(context, gradeColor),
+      onTap: () => _showDetail(context, gColor),
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: gradeColor.withValues(alpha: 0.55)),
+          border: Border.all(color: gColor.withValues(alpha: 0.55)),
           color: const Color.fromRGBO(10, 7, 2, 0.8),
         ),
         child: Stack(
@@ -1158,11 +1130,11 @@ class _BagSlot extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(item.name[0],
-                    style: TextStyle(color: gradeColor, fontSize: 20, fontWeight: FontWeight.bold),
+                  Text(slot.name[0],
+                    style: TextStyle(color: gColor, fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 2),
-                  Text(item.cat,
+                  Text(catLabel(slot.cat),
                     style: const TextStyle(color: TianniColors.goldDark2, fontSize: 8, letterSpacing: 1),
                   ),
                 ],
@@ -1170,8 +1142,8 @@ class _BagSlot extends StatelessWidget {
             ),
             Positioned(
               left: 2, top: 1,
-              child: Text(item.grade,
-                style: TextStyle(color: gradeColor.withValues(alpha: 0.7), fontSize: 8),
+              child: Text(gradeLabel(slot.grade),
+                style: TextStyle(color: gColor.withValues(alpha: 0.7), fontSize: 8),
               ),
             ),
             Positioned(
@@ -1186,19 +1158,28 @@ class _BagSlot extends StatelessWidget {
     );
   }
 
+  String catLabel(ItemCategory cat) => switch (cat) {
+        ItemCategory.pill => '丹药',
+        ItemCategory.mat => '材料',
+        ItemCategory.equip => '装备',
+        ItemCategory.talisman => '符箓',
+        ItemCategory.skill => '功法',
+        ItemCategory.junk => '杂物',
+      };
+
   void _showDetail(BuildContext context, Color gradeColor) {
     TianniDialog.show(
       context,
-      title: item.name,
-      subtitle: '${item.grade}品 · ${item.cat}',
+      title: slot.name,
+      subtitle: '${gradeLabel(slot.grade)} · ${catLabel(slot.cat)}',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _infoRow('品名', item.name),
-          _infoRow('品阶', '${item.grade}品'),
-          _infoRow('分类', item.cat),
-          _infoRow('数量', '${item.count}'),
+          _infoRow('品名', slot.name),
+          _infoRow('品阶', gradeLabel(slot.grade)),
+          _infoRow('分类', catLabel(slot.cat)),
+          _infoRow('数量', '${slot.count}'),
         ],
       ),
       actions: [

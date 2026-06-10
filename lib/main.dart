@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'theme/colors.dart';
 import 'providers/game_clock_provider.dart';
 import 'services/character_storage.dart';
+import 'services/item_registry.dart';
 import 'pages/advisory_page.dart';
 import 'pages/character_select_page.dart';
 import 'pages/create_character_page.dart';
@@ -12,6 +13,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GameClock.initEpoch();
   await CharacterStorage.ensureInitialized();
+  await ItemRegistry.init();
   runApp(const ProviderScope(child: TianniApp()));
 }
 
