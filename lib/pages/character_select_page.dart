@@ -108,8 +108,8 @@ class _CharacterSelectPageState extends State<CharacterSelectPage> {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: slot != null
-                          ? _CharCard(character: slot, index: i, realmColor: _realmColor(slot.realmIndex))
-                          : _EmptySlot(index: i),
+                          ? _CharCard(character: slot, index: i, realmColor: _realmColor(slot.realmIndex), onDelete: _loadSlots)
+                          : _EmptySlot(index: i, onReturn: _loadSlots),
                     );
                   },
                 ),
@@ -179,8 +179,9 @@ class _CharCard extends StatelessWidget {
   final CharacterData character;
   final int index;
   final Color realmColor;
+  final VoidCallback? onDelete;
 
-  const _CharCard({required this.character, required this.index, required this.realmColor});
+  const _CharCard({required this.character, required this.index, required this.realmColor, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -284,9 +285,9 @@ class _CharCard extends StatelessWidget {
           text: '删除',
           isPrimary: false,
           onTap: () {
-            Navigator.of(context).pop();
+            Navigator.of(context).pop(); // 关闭弹窗
             CharacterStorage.delete(index).then((_) {
-              Navigator.of(context).pushNamedAndRemoveUntil('/characters', (route) => false);
+              onDelete?.call();
             });
           },
         ),
@@ -378,12 +379,16 @@ class _CharCard extends StatelessWidget {
 
 class _EmptySlot extends StatelessWidget {
   final int index;
-  const _EmptySlot({required this.index});
+  final void Function()? onReturn;
+  const _EmptySlot({required this.index, this.onReturn});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.of(context).pushNamed('/create-character'),
+      onTap: () async {
+        await Navigator.of(context).pushNamed('/create-character');
+        onReturn?.call();
+      },
       child: AncientBorder(
         gold: false,
         padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
