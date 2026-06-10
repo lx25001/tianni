@@ -16,14 +16,19 @@ class InventoryNotifier extends StateNotifier<Inventory> {
 
   /// 添加物品。返回未能放入的溢出数量（0=全部成功）。
   Future<int> addItem(String itemId, int count, {String? data}) async {
+    if (count <= 0) return 0;
     final inv = state.copy();
     final left = inv.addItem(itemId, count, data: data);
-    state = inv;
-    await InventoryDao.saveAll(slot, state);
+    // 仅在真实写入时才触发刷新和存盘
+    if (left < count) {
+      state = inv;
+      await InventoryDao.saveAll(slot, state);
+    }
     return left;
   }
 
   Future<bool> removeItem(String itemId, int count) async {
+    if (count <= 0) return true;
     final inv = state.copy();
     final ok = inv.removeItem(itemId, count);
     if (ok) {
