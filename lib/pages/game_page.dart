@@ -1016,15 +1016,20 @@ class _BagPanelState extends ConsumerState<_BagPanel> {
   @override
   Widget build(BuildContext context) {
     final inv = ref.watch(inventoryProvider(widget.slotIndex));
-    final items = _filtered;
     final usedSlots = inv.usedSlots;
+    final isFiltering = _activeTab != '全部' || _query.isNotEmpty;
+    // 全部分类：严格按底层 slots 数组渲染，保留空洞
+    // 过滤/搜索：紧凑展示匹配项
+    final List<InventorySlot?> displayItems = isFiltering
+        ? [..._filtered.cast<InventorySlot?>()]
+        : inv.slots.toList();
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       behavior: HitTestBehavior.translucent,
       child: Column(
         children: [
-          // 标题 + 容量
+          // 标题 + 容量 + 整理按钮
           Padding(
           padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
           child: Row(
@@ -1033,6 +1038,11 @@ class _BagPanelState extends ConsumerState<_BagPanel> {
               const SizedBox(width: 6),
               const Text('储 物', style: TextStyle(color: TianniColors.goldBright, fontSize: 14, letterSpacing: 4)),
               const Spacer(),
+              isFiltering ? const SizedBox.shrink() : GestureDetector(
+                onTap: () => ref.read(inventoryProvider(widget.slotIndex).notifier).compact(),
+                child: const Text('整 理', style: TextStyle(color: TianniColors.goldDark, fontSize: 10, letterSpacing: 3)),
+              ),
+              const SizedBox(width: 10),
               Text('$usedSlots / ${inv.capacity}',
                 style: const TextStyle(color: TianniColors.gold, fontSize: 11)),
               const SizedBox(width: 4),
@@ -1129,11 +1139,20 @@ class _BagPanelState extends ConsumerState<_BagPanel> {
               crossAxisSpacing: 6,
               childAspectRatio: 1.05,
             ),
-            itemCount: inv.capacity,
+            itemCount: isFiltering ? (displayItems.length + 1) : inv.capacity,
             itemBuilder: (context, index) {
-              if (index < items.length) return _BagSlot(slot: items[index], slotIndex: widget.slotIndex);
-              if (index < inv.capacity) return const _EmptySlot();
-              return const SizedBox.shrink();
+              if (isFiltering) {
+                if (index < displayItems.length && displayItems[index] != null) {
+                  return _BagSlot(slot: displayItems[index]!, slotIndex: widget.slotIndex);
+                }
+                return const _EmptySlot();
+              } else {
+                final slotData = displayItems[index];
+                if (slotData != null) {
+                  return _BagSlot(slot: slotData, slotIndex: widget.slotIndex);
+                }
+                return const _EmptySlot();
+              }
             },
           ),
         ),
