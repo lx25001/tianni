@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 // ── 枚举 ──────────────────────────────────────
@@ -219,3 +220,29 @@ class ItemTemplate {
     );
   }
 }
+
+/// 属性中文名
+String statLabel(String key) => switch (key) {
+      'attack' => '攻击力',
+      'defense' => '防御力',
+      'critRate' => '暴击率',
+      'magicResist' => '法术抗性',
+      'bagSlots' => '储物格',
+      'speed' => '速度',
+      _ => key,
+    };
+
+/// 效果类型中文名
+String effectLabel(String type) => switch (type) {
+      'cultivateBoost' => '修炼加速',
+      'breakthroughBonus' => '突破加成',
+      'damage' => '伤害',
+      'heal' => '生命回复',
+      'restoreQi' => '灵力回复',
+      'reduceToxicity' => '降低毒性',
+      'burn' => '灼烧',
+      'slow' => '减速',
+      'defenseBoost' => '防御提升',
+      'teleport' => '传送',
+      _ => type,
+    };

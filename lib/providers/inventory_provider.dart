@@ -15,18 +15,17 @@ class InventoryNotifier extends StateNotifier<Inventory> {
   }
 
   Future<void> addItem(String itemId, int count) async {
-    // 先复制一份再操作，触发 UI 刷新，后台持久化
-    final copy = Inventory.fromSlotList(state.toList(), capacity: state.capacity);
-    copy.addItem(itemId, count);
-    state = copy;
+    final inv = state.copy();
+    inv.addItem(itemId, count);
+    state = inv;
     await InventoryDao.saveAll(slot, state);
   }
 
   Future<bool> removeItem(String itemId, int count) async {
-    final copy = Inventory.fromSlotList(state.toList(), capacity: state.capacity);
-    final ok = copy.removeItem(itemId, count);
+    final inv = state.copy();
+    final ok = inv.removeItem(itemId, count);
     if (ok) {
-      state = copy;
+      state = inv;
       await InventoryDao.saveAll(slot, state);
     }
     return ok;
@@ -38,6 +37,6 @@ class InventoryNotifier extends StateNotifier<Inventory> {
 }
 
 final inventoryProvider =
-    StateNotifierProvider.autoDispose.family<InventoryNotifier, Inventory, int>(
+    StateNotifierProvider.family<InventoryNotifier, Inventory, int>(
   (ref, slot) => InventoryNotifier(slot),
 );

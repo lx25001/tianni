@@ -1172,8 +1172,12 @@ class _BagSlot extends ConsumerWidget {
   void _showDetail(BuildContext context, WidgetRef ref) {
     final tmpl = slot.template;
     final desc = tmpl?.desc ?? '';
-    final effectsText = tmpl?.effects?.map((e) => e.desc ?? '${e.type} +${e.value}').join('\n') ?? '';
-    final statsText = tmpl?.baseStats?.entries.map((e) => '${e.key}: +${e.value}').join(' · ') ?? '';
+    final effectsText = tmpl?.effects
+            ?.map((e) => e.desc ?? '${effectLabel(e.type)} +${e.value.toStringAsFixed(0)}')
+            .join('\n') ?? '';
+    final statsText = tmpl?.baseStats
+            ?.entries.map((e) => '${statLabel(e.key)} +${e.value.toStringAsFixed(0)}')
+            .join(' · ') ?? '';
 
     TianniDialog.show(
       context,

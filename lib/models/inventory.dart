@@ -109,4 +109,28 @@ class Inventory {
   }
 
   List<InventorySlot> toList() => slots.where((s) => s != null).cast<InventorySlot>().toList();
+
+  /// 返回深拷贝的新背包
+  Inventory copy() {
+    final inv = Inventory(capacity: capacity);
+    for (final s in slots) {
+      if (s == null) continue;
+      inv.slots[s.slotIdx] = InventorySlot(itemId: s.itemId, count: s.count, slotIdx: s.slotIdx);
+    }
+    return inv;
+  }
+
+  /// 返回添加物品后的新背包（不可变风格）
+  Inventory added(String itemId, int count) {
+    final inv = copy();
+    inv.addItem(itemId, count);
+    return inv;
+  }
+
+  /// 返回移除物品后的新背包（不可变风格），(是否成功, 新背包)
+  (bool, Inventory) removed(String itemId, int count) {
+    final inv = copy();
+    final ok = inv.removeItem(itemId, count);
+    return (ok, inv);
+  }
 }
