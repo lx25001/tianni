@@ -57,17 +57,18 @@ class Inventory {
   int get freeSlots => capacity - usedSlots;
 
   /// 添加物品。优先堆叠到已有槽位。
-  bool addItem(String itemId, int count) {
+  /// [data] 装备/法宝的动态属性 JSON，传入后仅堆叠到 data 完全相同的槽位。
+  bool addItem(String itemId, int count, {String? data}) {
     final tmpl = ItemRegistry.get(itemId);
     if (tmpl == null) return false;
 
     int remaining = count;
 
-    // 优先堆叠
+    // 优先堆叠（data 必须一致才算同一堆）
     if (tmpl.stackable) {
       for (final slot in slots) {
         if (slot == null) continue;
-        if (slot.itemId == itemId && slot.count < slot.stackMax) {
+        if (slot.itemId == itemId && slot.data == data && slot.count < slot.stackMax) {
           final room = slot.stackMax - slot.count;
           final add = remaining < room ? remaining : room;
           slot.count += add;
@@ -82,13 +83,14 @@ class Inventory {
       final idx = slots.indexWhere((s) => s == null);
       if (idx < 0) return false; // 背包满
       final add = tmpl.stackable ? (remaining > tmpl.stackMax ? tmpl.stackMax : remaining) : 1;
-      slots[idx] = InventorySlot(itemId: itemId, count: add, slotIdx: idx);
+      slots[idx] = InventorySlot(itemId: itemId, count: add, slotIdx: idx, data: data);
       remaining -= add;
     }
     return true;
   }
 
-  /// 移除物品。优先从堆叠数少的槽位取。
+  /// 移除物品（按 itemId）。优先从堆叠数少的槽位取。
+  /// ⚠️ 不区分 data，删除带词条装备时请用 [removeItemBySlot] 精确删除。
   bool removeItem(String itemId, int count) {
     int remaining = count;
     for (final slot in slots) {
@@ -102,6 +104,16 @@ class Inventory {
       slots[slot.slotIdx] = null;
     }
     return remaining <= 0;
+  }
+
+  /// 按槽位精确删除（防误删极品装备）。
+  bool removeItemBySlot(int slotIdx, int count) {
+    if (slotIdx < 0 || slotIdx >= capacity) return false;
+    final slot = slots[slotIdx];
+    if (slot == null || slot.count < count) return false;
+    slot.count -= count;
+    if (slot.count <= 0) slots[slotIdx] = null;
+    return true;
   }
 
   int countItem(String itemId) {
@@ -125,9 +137,9 @@ class Inventory {
   }
 
   /// 返回添加物品后的新背包（不可变风格）
-  Inventory added(String itemId, int count) {
+  Inventory added(String itemId, int count, {String? data}) {
     final inv = copy();
-    inv.addItem(itemId, count);
+    inv.addItem(itemId, count, data: data);
     return inv;
   }
 
@@ -135,6 +147,13 @@ class Inventory {
   (bool, Inventory) removed(String itemId, int count) {
     final inv = copy();
     final ok = inv.removeItem(itemId, count);
+    return (ok, inv);
+  }
+
+  /// 按槽位精确删除的不可变版
+  (bool, Inventory) removedBySlot(int slotIdx, int count) {
+    final inv = copy();
+    final ok = inv.removeItemBySlot(slotIdx, count);
     return (ok, inv);
   }
 }
