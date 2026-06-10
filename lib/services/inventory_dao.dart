@@ -7,21 +7,19 @@ class InventoryDao {
 
   static Future<void> saveAll(int slot, Inventory inv) async {
     final db = await DatabaseService.db;
-    await db.transaction((txn) async {
-      // 清空旧数据
-      await txn.delete(_table, where: 'slot = ?', whereArgs: [slot]);
-      // 插入新数据
-      for (final s in inv.slots) {
-        if (s == null) continue;
-        await txn.insert(_table, {
-          'slot': slot,
-          'item_id': s.itemId,
-          'count': s.count,
-          'slot_idx': s.slotIdx,
-          'data': s.data,
-        });
-      }
-    });
+    final batch = db.batch();
+    batch.delete(_table, where: 'slot = ?', whereArgs: [slot]);
+    for (final s in inv.slots) {
+      if (s == null) continue;
+      batch.insert(_table, {
+        'slot': slot,
+        'item_id': s.itemId,
+        'count': s.count,
+        'slot_idx': s.slotIdx,
+        'data': s.data,
+      });
+    }
+    await batch.commit(noResult: true);
   }
 
   static Future<Inventory> load(int slot, {int capacity = 30}) async {
