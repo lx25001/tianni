@@ -21,6 +21,10 @@ class CharacterData {
   // 离线
   final int lastSaveTs; // 毫秒时间戳
 
+  // 当前气血/灵力（不做派生，需持久化防止刷血 Bug）
+  final int currentHp;
+  final int currentQi;
+
   CharacterData({
     required this.surname,
     required this.givenName,
@@ -38,6 +42,8 @@ class CharacterData {
     this.xpPercent = 0,
     this.spiritStones = 5,
     this.lastSaveTs = 0,
+    this.currentHp = 100,
+    this.currentQi = 80,
   }) : fullName = '$surname$givenName';
 
   factory CharacterData.fromJson(Map<String, dynamic> json) {
@@ -58,6 +64,8 @@ class CharacterData {
       xpPercent: json['xpPercent'] as int? ?? 0,
       spiritStones: json['spiritStones'] as int? ?? 5,
       lastSaveTs: json['lastSaveTs'] as int? ?? 0,
+      currentHp: json['currentHp'] as int? ?? 100,
+      currentQi: json['currentQi'] as int? ?? 80,
     );
   }
 
@@ -74,6 +82,8 @@ class CharacterData {
     'xpPercent': xpPercent,
     'spiritStones': spiritStones,
     'lastSaveTs': lastSaveTs,
+    'currentHp': currentHp,
+    'currentQi': currentQi,
   };
 
   static const List<String> realms = [
@@ -93,6 +103,7 @@ class CharacterData {
     int? con, int? spi, int? qi, int? dao, int? ins, int? bon,
     int? realmIndex, int? layer, int? xpPercent,
     int? spiritStones, int? lastSaveTs,
+    int? currentHp, int? currentQi,
   }) {
     return CharacterData(
       surname: surname ?? this.surname,
@@ -111,6 +122,8 @@ class CharacterData {
       xpPercent: xpPercent ?? this.xpPercent,
       spiritStones: spiritStones ?? this.spiritStones,
       lastSaveTs: lastSaveTs ?? this.lastSaveTs,
+      currentHp: currentHp ?? this.currentHp,
+      currentQi: currentQi ?? this.currentQi,
     );
   }
 }

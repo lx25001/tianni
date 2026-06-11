@@ -1312,7 +1312,10 @@ class _BagSlot extends ConsumerWidget {
 
   void _equipItem(BuildContext context, WidgetRef ref) {
     final tmpl = slot.template;
-    if (tmpl == null) return;
+    if (tmpl == null) {
+      TianniToast.show(context, '物品模板未找到');
+      return;
+    }
     final equipType = tmpl.equipSlot;
     if (equipType == null) {
       TianniToast.show(context, '此物品不可装备');

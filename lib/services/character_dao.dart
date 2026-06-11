@@ -76,6 +76,8 @@ class CharacterDao {
       'xp_percent': d.xpPercent,
       'spirit_stones': d.spiritStones,
       'last_save_ts': d.lastSaveTs,
+      'current_hp': d.currentHp,
+      'current_qi': d.currentQi,
       'created_at': createdAt,
       'updated_at': updatedAt,
     };
@@ -99,6 +101,8 @@ class CharacterDao {
       xpPercent: row['xp_percent'] as int? ?? 0,
       spiritStones: row['spirit_stones'] as int? ?? 5,
       lastSaveTs: row['last_save_ts'] as int? ?? 0,
+      currentHp: row['current_hp'] as int? ?? 100,
+      currentQi: row['current_qi'] as int? ?? 80,
     );
   }
 }

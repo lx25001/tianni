@@ -36,7 +36,7 @@ class DatabaseService {
     final dbPath = await getDatabasesPath();
     _db = await openDatabase(
       p.join(dbPath, 'tianni.db'),
-      version: 5,
+      version: 6,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -70,6 +70,8 @@ class DatabaseService {
         xp_percent INTEGER NOT NULL DEFAULT 0,
         spirit_stones INTEGER NOT NULL DEFAULT 0,
         last_save_ts INTEGER NOT NULL DEFAULT 0,
+        current_hp  INTEGER NOT NULL DEFAULT 100,
+        current_qi  INTEGER NOT NULL DEFAULT 80,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -142,6 +144,10 @@ class DatabaseService {
           FOREIGN KEY (slot) REFERENCES character_slot(slot) ON DELETE CASCADE
         )
       ''');
+    }
+    if (oldVersion < 6) {
+      await db.execute("ALTER TABLE character_slot ADD COLUMN current_hp INTEGER NOT NULL DEFAULT 100");
+      await db.execute("ALTER TABLE character_slot ADD COLUMN current_qi INTEGER NOT NULL DEFAULT 80");
     }
   }
 
