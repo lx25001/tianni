@@ -1275,10 +1275,13 @@ class _BagSlot extends ConsumerWidget {
           isPrimary: true,
           onTap: () {
             if (slot.cat == ItemCategory.pill) {
+              Navigator.of(context).pop();
               _usePill(context, ref);
             } else if (slot.cat == ItemCategory.equip) {
+              Navigator.of(context).pop();
               _equipItem(context, ref);
             } else {
+              Navigator.of(context).pop();
               ref.read(inventoryProvider(slotIndex)).removeItem(slot.itemId, 1);
               Navigator.of(context).pop();
               TianniToast.show(context, '使用了 1 个 ${slot.name}');
@@ -1289,8 +1292,8 @@ class _BagSlot extends ConsumerWidget {
           text: '丢弃',
           isPrimary: false,
           onTap: () {
-            ref.read(inventoryProvider(slotIndex)).removeItem(slot.itemId, slot.count);
             Navigator.of(context).pop();
+            ref.read(inventoryProvider(slotIndex)).removeItem(slot.itemId, slot.count);
             TianniToast.show(context, '丢弃了 ${slot.name} ×${slot.count}');
           },
         ),
@@ -1306,7 +1309,6 @@ class _BagSlot extends ConsumerWidget {
       // 修炼加速 buff 后续由修炼系统读取
     }
     ref.read(inventoryProvider(slotIndex)).removeItem(slot.itemId, 1);
-    Navigator.of(context).pop();
     TianniToast.show(context, '服用了 ${slot.name}');
   }
 
@@ -1327,11 +1329,10 @@ class _BagSlot extends ConsumerWidget {
       EquipSlot.accessory => 'accessory',
       EquipSlot.artifact => 'artifact',
     };
-    // 副本传给装备系统（slotIdx 精确定位，防止误删）
     final copySlot = InventorySlot(itemId: slot.itemId, count: 1, slotIdx: slot.slotIdx, data: slot.data);
-    ref.read(equipmentProvider(slotIndex).notifier).equip(eqType, copySlot).then((ok) {
-      if (ok) {
-        Navigator.of(context).pop();
+    final ok = ref.read(equipmentProvider(slotIndex).notifier).equip(eqType, copySlot);
+    ok.then((success) {
+      if (success) {
         TianniToast.show(context, '装备了 ${slot.name}');
       } else {
         TianniToast.show(context, '装备失败');

@@ -40,9 +40,9 @@ class EquipmentNotifier extends StateNotifier<Equipment> {
 
     // 同一事务存盘：背包 + 装备 双写
     try {
-      await DatabaseService.transaction<bool>(() async {
-        await InventoryDao.saveAll(slot, invCopy);
-        await EquipmentDao.saveAll(slot, equipCopy);
+      await DatabaseService.transaction<bool>((txn) async {
+        await InventoryDao.saveAll(slot, invCopy, txn: txn);
+        await EquipmentDao.saveAll(slot, equipCopy, txn: txn);
         return true;
       });
     } catch (_) {
@@ -68,9 +68,9 @@ class EquipmentNotifier extends StateNotifier<Equipment> {
     if (left > 0) return false; // 背包满
 
     try {
-      await DatabaseService.transaction<bool>(() async {
-        await InventoryDao.saveAll(slot, invCopy);
-        await EquipmentDao.saveAll(slot, equipCopy);
+      await DatabaseService.transaction<bool>((txn) async {
+        await InventoryDao.saveAll(slot, invCopy, txn: txn);
+        await EquipmentDao.saveAll(slot, equipCopy, txn: txn);
         return true;
       });
     } catch (_) {

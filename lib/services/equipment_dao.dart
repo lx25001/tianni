@@ -1,3 +1,4 @@
+import 'package:sqflite/sqflite.dart';
 import '../models/equipment.dart';
 import '../models/inventory.dart';
 import 'database_service.dart';
@@ -5,8 +6,9 @@ import 'database_service.dart';
 class EquipmentDao {
   static const _table = 'equipment_slot';
 
-  static Future<void> saveAll(int slot, Equipment equipment) async {
-    final db = await DatabaseService.db;
+  /// [txn] 传入时在事务中写入，否则使用默认 db 连接。
+  static Future<void> saveAll(int slot, Equipment equipment, {DatabaseExecutor? txn}) async {
+    final db = txn ?? await DatabaseService.db;
     final batch = db.batch();
     batch.delete(_table, where: 'slot = ?', whereArgs: [slot]);
     for (final e in equipment.slots.entries) {

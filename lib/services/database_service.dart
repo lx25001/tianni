@@ -9,10 +9,10 @@ class DatabaseService {
   static Database? _db;
 
   /// 事务工具：保证跨表操作原子性。
-  /// 回调在 SQLite 事务中执行，任何异常自动回滚。
-  static Future<T> transaction<T>(Future<T> Function() action) async {
+  /// 回调中必须使用传入的 txn 对象执行 DAO 操作，否则会触发数据库锁。
+  static Future<T> transaction<T>(Future<T> Function(DatabaseExecutor txn) action) async {
     final d = await db;
-    return d.transaction((_) => action());
+    return d.transaction<T>((txn) => action(txn));
   }
 
   /// 获取数据库实例
