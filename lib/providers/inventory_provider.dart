@@ -45,6 +45,7 @@ class InventoryNotifier extends StateNotifier<Inventory> {
     final inv = state.copy();
     final ok = inv.removeItem(itemId, count);
     if (ok) {
+      inv.compact(); // 自动消除空洞
       state = inv;
       await InventoryDao.saveAll(slot, state);
     }
@@ -56,6 +57,7 @@ class InventoryNotifier extends StateNotifier<Inventory> {
     final inv = state.copy();
     final ok = inv.removeItemBySlot(slotIdx, count);
     if (ok) {
+      inv.compact(); // 自动消除空洞
       state = inv;
       await InventoryDao.saveAll(slot, state);
     }
