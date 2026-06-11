@@ -141,6 +141,16 @@ class Inventory {
     return inv;
   }
 
+  /// 批量添加物品。在内存中一次结算，防并发覆盖。
+  /// [返回] int: 总溢出的数量（0 = 全部成功）
+  int addItems(List<({String itemId, int count, String? data})> items) {
+    int totalLeft = 0;
+    for (final item in items) {
+      totalLeft += addItem(item.itemId, item.count, data: item.data);
+    }
+    return totalLeft;
+  }
+
   /// 返回添加物品后的新背包（不可变风格）。
   /// [返回] (int 剩余未添加数量, Inventory 新背包)。left==0 表示全部成功。
   (int, Inventory) added(String itemId, int count, {String? data}) {

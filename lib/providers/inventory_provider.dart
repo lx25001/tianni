@@ -27,6 +27,19 @@ class InventoryNotifier extends StateNotifier<Inventory> {
     return left;
   }
 
+  /// 批量添加。内存一次结算 → 单次 state 刷新 → 单次 DB 写入。
+  /// 防并发覆盖（一键拾取安全）。
+  Future<int> addItems(List<({String itemId, int count, String? data})> items) async {
+    if (items.isEmpty) return 0;
+    final inv = state.copy();
+    final totalLeft = inv.addItems(items);
+    if (totalLeft < items.fold<int>(0, (p, i) => p + i.count)) {
+      state = inv;
+      await InventoryDao.saveAll(slot, state);
+    }
+    return totalLeft;
+  }
+
   Future<bool> removeItem(String itemId, int count) async {
     if (count <= 0) return true;
     final inv = state.copy();

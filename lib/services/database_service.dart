@@ -8,6 +8,16 @@ class DatabaseService {
   static DatabaseService? _instance;
   static Database? _db;
 
+  /// 事务工具：保证跨表操作原子性。
+  /// 回调在 SQLite 事务中执行，任何异常自动回滚。
+  static Future<T> transaction<T>(Future<T> Function() action) async {
+    final d = await db;
+    return d.transaction((_) => action());
+  }
+
+  /// 获取数据库实例
+  static Database? get _dbSync => _db;
+
   DatabaseService._();
 
   static DatabaseService get instance {

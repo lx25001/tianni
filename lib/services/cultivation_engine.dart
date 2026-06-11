@@ -186,6 +186,7 @@ class CultivationEngine {
   }
 
   /// 离线修炼补算。
+  /// 离线收益上限 3 天，防玩家调系统时间作弊。
   /// 返回 [新角色数据, 离线秒数, 突破层数, 突破大境界数]
   static (CharacterData, int, int, int) applyOffline({
     required CharacterData character,
@@ -193,6 +194,8 @@ class CultivationEngine {
     bool inCaveTrainingRoom = false,
   }) {
     if (offlineSeconds <= 0) return (character, 0, 0, 0);
+    const maxOffline = 86400 * 3; // 3 天
+    final clampedSeconds = offlineSeconds > maxOffline ? maxOffline : offlineSeconds;
 
     final rate = xpPerSecond(
       realmIndex: character.realmIndex,
@@ -201,7 +204,7 @@ class CultivationEngine {
       inCaveTrainingRoom: inCaveTrainingRoom,
     );
 
-    final xpGained = rate * offlineSeconds;
+    final xpGained = rate * clampedSeconds;
     int layers = 0;
     int realmBreaks = 0;
     int currentRealm = character.realmIndex;
@@ -260,6 +263,6 @@ class CultivationEngine {
       lastSaveTs: character.lastSaveTs,
     );
 
-    return (updated, offlineSeconds, layers, realmBreaks);
+    return (updated, clampedSeconds, layers, realmBreaks);
   }
 }

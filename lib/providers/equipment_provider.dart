@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/equipment.dart';
 import '../models/inventory.dart';
+import '../services/database_service.dart';
 import '../services/equipment_dao.dart';
+import '../services/inventory_dao.dart';
 import 'inventory_provider.dart';
 
 /// 装备状态
@@ -17,35 +19,56 @@ class EquipmentNotifier extends StateNotifier<Equipment> {
     state = await EquipmentDao.load(slot);
   }
 
-  /// 穿戴装备。从背包扣除 1 个，旧装备退回背包。
+  /// 穿戴装备。背包扣除 + 装备槽更换在同一事务中完成，防丢件。
   Future<bool> equip(String equipType, InventorySlot bagSlot) async {
-    // 从背包精确扣除
-    final ok = await _ref.read(inventoryProvider(slot).notifier).removeItemBySlot(bagSlot.slotIdx, 1);
-    if (!ok) return false;
+    final invNotifier = _ref.read(inventoryProvider(slot).notifier);
+    final equipCopy = state.copy();
+    final old = equipCopy.equip(equipType, bagSlot);
 
-    final copy = state.copy();
-    final old = copy.equip(equipType, bagSlot);
-    state = copy;
-    await EquipmentDao.saveAll(slot, state);
+    // 先在内存中完成所有变更
+    final invCopy = _ref.read(inventoryProvider(slot)).copy();
+    if (!invCopy.removeItemBySlot(bagSlot.slotIdx, 1)) return false;
+    if (old != null) invCopy.addItem(old.itemId, 1, data: old.data);
 
-    // 旧装备退回背包
-    if (old != null) {
-      await _ref.read(inventoryProvider(slot).notifier).addItem(old.itemId, 1, data: old.data);
+    // 同一事务存盘：背包 + 装备 双写
+    try {
+      await DatabaseService.transaction<bool>(() async {
+        await InventoryDao.saveAll(slot, invCopy);
+        await EquipmentDao.saveAll(slot, equipCopy);
+        return true;
+      });
+    } catch (_) {
+      return false; // 回滚，内存也不更新
     }
+
+    // 事务成功才更新 state
+    _ref.read(inventoryProvider(slot).notifier).refresh();
+    state = equipCopy;
     return true;
   }
 
   /// 卸下装备。退回背包，背包满则失败。
   Future<bool> unequip(String equipType) async {
-    final copy = state.copy();
-    final item = copy.unequip(equipType);
+    final equipCopy = state.copy();
+    final item = equipCopy.unequip(equipType);
     if (item == null) return false;
 
-    final left = await _ref.read(inventoryProvider(slot).notifier).addItem(item.itemId, 1, data: item.data);
-    if (left > 0) return false; // 背包满，无法卸下
+    final invCopy = _ref.read(inventoryProvider(slot)).copy();
+    final left = invCopy.addItem(item.itemId, 1, data: item.data);
+    if (left > 0) return false; // 背包满
 
-    state = copy;
-    await EquipmentDao.saveAll(slot, state);
+    try {
+      await DatabaseService.transaction<bool>(() async {
+        await InventoryDao.saveAll(slot, invCopy);
+        await EquipmentDao.saveAll(slot, equipCopy);
+        return true;
+      });
+    } catch (_) {
+      return false;
+    }
+
+    _ref.read(inventoryProvider(slot).notifier).refresh();
+    state = equipCopy;
     return true;
   }
 
